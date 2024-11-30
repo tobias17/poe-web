@@ -65,7 +65,6 @@ function global_on_mouse_move(e) {
       knob.setAttribute("cx", cx)
    }
    g.update_data(index + g.min)
-   // print(e)
 }
 canvas.onmousemove = global_on_mouse_move
 
@@ -310,10 +309,10 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
    background.setAttribute('height', (curr_y + BUFFER) - y);
 }
 
-function add_section(name, color, icon, x, y, img_width, rows) {
+function add_section(name, color, icon, x, y, img_width, stats_width, rows) {
    loadImage(x, y, icon)
    var items = []
-   __create_stats_page(x + img_width, y, 240, rows, name, color)
+   __create_stats_page(x + img_width, y, stats_width, rows, name, color)
 }
 
 add_section(
@@ -323,6 +322,7 @@ add_section(
    100,
    100,
    227,
+   240,
    [
       { type:"text", color:"#696969", value:"Quality: ${quality}%" },
       { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
@@ -352,8 +352,9 @@ add_section(
    "#f779f7",
    "./int.png",
    650,
-   100,
+   80,
    34,
+   280,
    [
       { type:"text", color:"#696969", value:"Intelligence: ${amount}" },
       { type:"slider", id:"amount", min:0, max:500, default:124, color:"#5bfee0" },
@@ -364,6 +365,34 @@ add_section(
       { type:"text", color:"#696969", value:"${int}% Increased Max Energy Shield" },
 
       { type:"calc", id:"int", from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+   ]
+)
+
+add_section(
+   "helmet",
+   "#f779f7",
+   "./helmet.png",
+   900,
+   300,
+   206,
+   240,
+   [
+      { type:"text", color:"#696969", value:"Quality: ${quality}%" },
+      { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
+
+      { type:"text", color:"#696969", value:"Base Energy Shield: ${base_value}" },
+      { type:"slider", id:"base_value", min:12, max:47, default:36, color:"#00ff00" },
+
+      { type:"text", color:"#7171da", value:"${global_perc_incr}% Increased Global Defenses" },
+      { type:"slider", id:"global_perc_incr", min:18, max:22, default:20, color:"#f2fc24" },
+
+      { type:"gap" },
+
+      { type:"text", color:"#696969", value:"Floor[ ${base_value} * ${quality_f} ]" },
+      { type:"text", color:"#696969", value:"Item Energy Shield: ${helmet}" },
+
+      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
+      { type:"calc", id:"helmet", from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) }
    ]
 )
 
