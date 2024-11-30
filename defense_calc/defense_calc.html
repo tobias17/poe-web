@@ -107,6 +107,12 @@ function rectangle(x, y, w, h, color, attrs={}) {
       fill: color,
    })
 }
+function tspan(color, attrs={}) {
+   return Object.assign(attrs, {
+      tag: 'tspan',
+      fill: color,
+   })
+}
 function create(attrs, parent=null) {
    const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
    for (key in attrs) {
@@ -120,57 +126,15 @@ const FONT_SIZE = 14
 
 
 
-/*************************/
-/***   Text Elements   ***/
-/*************************/
-function __create_text_elements(text, x, y, font_size, color) {
-   const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-   text_element.setAttribute('x', x);
-   text_element.setAttribute('y', y);
-   text_element.setAttribute('text-anchor', 'middle');
-   text_element.setAttribute('dominant-baseline', 'middle');
-   text_element.setAttribute('font-size', font_size);
-   text_element.setAttribute('class', 'svg_text')
-   canvas.appendChild(text_element);
 
-   var original = text
-   var in_section = false
-   var data = {}
-   while (text.length > 0) {
-      if (in_section) {
-         var index = text.indexOf("}")
-         if (index < 0) {
-            console.error(`unmatched brackets: '${original}'`)
-            return null
-         }
-         var key = text.slice(0, index)
-         if ( !(key in data) ) {
-            data[key] = []
-         }
-         const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
-         tspan.setAttribute('fill', color)
-         tspan.textContent = `[${key}]`
-         data[key].push(tspan)
-         text_element.appendChild(tspan)
-         text = text.slice(index + 1)
-         in_section = false
-      } else {
-         var index = text.indexOf("${")
-         var chunk = index < 0 ? text : text.slice(0, index)
-         const key = "color"
-         if ( !(key in data) ) {
-            data[key] = []
-         }
-         const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
-         tspan.setAttribute('fill', color)
-         tspan.textContent = chunk
-         data[key].push(tspan)
-         text_element.appendChild(tspan)
-         text = index < 0 ? "" : text.slice(index + 2)
-         in_section = true
-      }
+var first_time = []
+var curr_vals = {}
+var stat_subs = {}
+function add_sub(key, value) {
+   if ( !(key in stat_subs) ) {
+      stat_subs[key] = []
    }
-   return data
+   stat_subs[key].push(value)
 }
 
 /*************************/
@@ -202,9 +166,55 @@ function __create_slider(cx, cy, width, min, max, color, value) {
    return g
 }
 
+/*************************/
+/***   Text Elements   ***/
+/*************************/
+function __create_text_elements(text, x, y, font_size, color, global_name) {
+   const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+   text_element.setAttribute('x', x);
+   text_element.setAttribute('y', y);
+   text_element.setAttribute('text-anchor', 'middle');
+   text_element.setAttribute('dominant-baseline', 'middle');
+   text_element.setAttribute('font-size', font_size);
+   text_element.setAttribute('class', 'svg_text')
+   canvas.appendChild(text_element);
+
+   var original = text
+   var in_section = false
+   while (text.length > 0) {
+      if (in_section) {
+         var index = text.indexOf("}")
+         if (index < 0) {
+            console.error(`unmatched brackets: '${original}'`)
+            return null
+         }
+         const key = text.slice(0, index)
+         const id = `${global_name}.${key}`
+         const t = create(tspan(color), text_element)
+         t.textContent = `[${key}]`
+         function update_text() {
+            t.textContent = curr_vals[id]
+         }
+         add_sub(id, update_text)
+         first_time.push(() => t.setAttribute('fill', local_colors[id]))
+         first_time.push(update_text)
+         text = text.slice(index + 1)
+         in_section = false
+      } else {
+         var index = text.indexOf("${")
+         var chunk = index < 0 ? text : text.slice(0, index)
+         const t = create(tspan(color), text_element)
+         t.textContent = chunk
+         text = index < 0 ? "" : text.slice(index + 2)
+         in_section = true
+      }
+   }
+}
+
 /************************/
 /***    Stats Page    ***/
 /************************/
+const local_colors = {}
 function __create_stats_page(x, y, width, rows, global_name, global_color) {
    const SECTION_HEIGHT = 22
    var usable_width = width * 0.75
@@ -212,62 +222,49 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
    const cx = x + width/2
    const BUFFER = 0.3 * SECTION_HEIGHT
 
-   const starts = {}
-   const texts  = []
-   const calcs  = {}
-   const curr_v = {}
    function update_data(key, value) {
-      curr_v[key] = value
-      for (t of texts) {
-         for (k in t) {
-            if (k == key) {
-               for (ts of t[k]) {
-                  ts.textContent = value
-               }
-            }
-         }
-      }
-      if (key in calcs) {
-         for (calc of calcs[key]) {
-            calc()
+      curr_vals[key] = value
+      if (key in stat_subs) {
+         for (sub of stat_subs[key]) {
+            sub()
          }
       }
    }
 
    var curr_y = y + BUFFER + SECTION_HEIGHT
    for (row of rows) {
+      const row_id = `${global_name}.${row.id}`
       if (row.type == "text") {
-         const ret = __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color)
-         if (ret != null) {
-            texts.push(ret)
-         }
+         __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, global_name)
       } else if (row.type == "slider") {
          const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
-         const row_id = row.id
          g.update_data = (v) => update_data(row_id, v)
-         starts[row.id] = { color:row.color, value:row.default }
-         curr_v[row.id] = row.default
+         curr_vals[row_id] = row.default
+         local_colors[row_id] = row.color
       } else if (row.type == "calc") {
-         const row_id = row.id
-         const from = row.from
+         const from_ids = row.from
+         const from_keys = []
+         for (id of from_ids) {
+            from_keys.push(id.indexOf(".") < 0 ? `${global_name}.${id}` : id)
+         }
+
          const func = row.func
          var color =
-            row.id == global_name
-               ? global_color
-               : "color" in row
-                  ? row.color
-                  : from.length == 1
-                     ? starts[from].color
-                     : null
+            "color" in row
+               ? row.color
+               : from_keys.length == 1
+                  ? local_colors[from_keys[0]]
+                  : null
          if (color == null) {
             console.error(`could not determine color for calc '${row_id}'`)
             continue
          }
+         local_colors[row_id] = color
 
          function update_calc() {
             const params = []
-            for (key of from) {
-               params.push(curr_v[key])
+            for (key of from_keys) {
+               params.push(curr_vals[key])
             }
             const new_value = func(...params)
             if (new_value == null) {
@@ -276,14 +273,9 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
                update_data(row_id, new_value)
             }
          }
-         for (key of row.from) {
-            if ( !(key in calcs) ) {
-               calcs[key] = []
-            }
-            calcs[key].push(update_calc)
+         for (key of from_keys) {
+            add_sub(key, update_calc)
          }
-         update_calc()
-         starts[row.id] = { color:color, value:curr_v[row.id] }
          curr_y -= SECTION_HEIGHT
       } else if (row.type == "gap") {
          // pass
@@ -293,27 +285,16 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
       curr_y += SECTION_HEIGHT
    }
 
-   for (key in starts) {
-      for (t of texts) {
-         for (k in t) {
-            if (k == key) {
-               for (ts of t[k]) {
-                  ts.setAttribute('fill', starts[key].color)
-                  ts.textContent = starts[key].value
-               }
-            }
-         }
-      }
-   }
-
    background.setAttribute('height', (curr_y + BUFFER) - y);
 }
 
 function add_section(name, color, icon, x, y, img_width, stats_width, rows) {
    loadImage(x, y, icon)
-   var items = []
    __create_stats_page(x + img_width, y, stats_width, rows, name, color)
 }
+
+const GRAY_TEXT = "#696969"
+const PURP_TEXT = "#7171da"
 
 add_section(
    "chestpiece",
@@ -324,26 +305,26 @@ add_section(
    227,
    240,
    [
-      { type:"text", color:"#696969", value:"Quality: ${quality}%" },
+      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
       { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
 
-      { type:"text", color:"#696969", value:"Base Energy Shield: ${base_value}" },
+      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
       { type:"slider", id:"base_value", min:12, max:47, default:36, color:"#00ff00" },
 
-      { type:"text", color:"#7171da", value:"+${flat_add} to Maximum Energy Shield" },
+      { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
       { type:"slider", id:"flat_add", min:16, max:30, default:21, color:"#fe3521" },
 
-      { type:"text", color:"#7171da", value:"${perc_incr}% Increased Energy Shield" },
+      { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
       { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:"#f2fc24" },
 
       { type:"gap" },
 
-      { type:"text", color:"#696969", value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f} ]" },
-      { type:"text", color:"#696969", value:"Item Energy Shield: ${chestpiece}" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f} ]" },
+      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
       { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
-      { type:"calc", id:"chestpiece", from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+      { type:"calc", id:"energy_shield", color:"#f779f7", from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
    ]
 )
 
@@ -356,13 +337,13 @@ add_section(
    34,
    280,
    [
-      { type:"text", color:"#696969", value:"Intelligence: ${amount}" },
+      { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
       { type:"slider", id:"amount", min:0, max:500, default:124, color:"#5bfee0" },
 
       { type:"gap" },
 
-      { type:"text", color:"#696969", value:"Floor[ ${amount} / 10 * 2 ]" },
-      { type:"text", color:"#696969", value:"${int}% Increased Max Energy Shield" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ ${amount} / 10 * 2 ]" },
+      { type:"text", color:GRAY_TEXT, value:"${int}% Increased Max Energy Shield" },
 
       { type:"calc", id:"int", from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
@@ -377,24 +358,38 @@ add_section(
    206,
    240,
    [
-      { type:"text", color:"#696969", value:"Quality: ${quality}%" },
+      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
       { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
 
-      { type:"text", color:"#696969", value:"Base Energy Shield: ${base_value}" },
+      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
       { type:"slider", id:"base_value", min:12, max:47, default:36, color:"#00ff00" },
 
-      { type:"text", color:"#7171da", value:"${global_perc_incr}% Increased Global Defenses" },
+      { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
       { type:"slider", id:"global_perc_incr", min:18, max:22, default:20, color:"#f2fc24" },
 
       { type:"gap" },
 
-      { type:"text", color:"#696969", value:"Floor[ ${base_value} * ${quality_f} ]" },
-      { type:"text", color:"#696969", value:"Item Energy Shield: ${helmet}" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f} ]" },
+      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
-      { type:"calc", id:"helmet", from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) }
+      { type:"calc", id:"energy_shield", color:"#f779f7", from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) }
    ]
 )
+
+__create_stats_page(500, 500, 240, [
+   { type:"text", color:GRAY_TEXT, value:"Floor[ ${helmet} ]" }
+], "global", "#f779f7")
+
+for (func of first_time) {
+   func()
+}
+for (key in stat_subs) {
+   for (sub of stat_subs[key]) {
+      sub()
+   }
+}
+
 
    </script>
 </body>
