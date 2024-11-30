@@ -135,7 +135,6 @@ for (let i = 0; i < COLOR_COUNT; i++) {
    if (hue < 0) hue += 360
    color_choice_l.push(`hsl(${Math.round(hue)}deg, 92%, 70%)`)
 }
-print(color_choice_l)
 function hash_str(text, shft=5) {
    var hash = 0
    if (text.length == 0) return 0
@@ -428,8 +427,8 @@ add_section(
    "helmet",
    "#f779f7",
    "./helmet.png",
-   900,
-   300,
+   950,
+   280,
    206,
    240,
    [
@@ -452,15 +451,24 @@ add_section(
    ]
 )
 
-colors = select_colors(1, "global")
-__create_stats_page(500, 500, 280, [
-   { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${int_perc_incr_f:2} + ${helmet_perc_incr_f:2}) ]" },
-   { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
+colors = select_colors(1, "character")
+add_section(
+   "character",
+   "#f779f7",
+   "./witch.png",
+   420,
+   480,
+   201,
+   280,
+   [
+      { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${int_perc_incr_f:2} + ${helmet_perc_incr_f:2}) ]" },
+      { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
 
-   { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
-   { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
-   { type:"calc", id:"energy_shield", color:colors.pop(), from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
-], "global", "#f779f7")
+      { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
+      { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
+      { type:"calc", id:"energy_shield", color:colors.pop(), from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+   ]
+)
 
 for (func of first_time) {
    func()
