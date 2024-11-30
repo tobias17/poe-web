@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>SVG Canvas Helper</title>
-    <style>
-        body {
-            background-color: #242424;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            font-family: Arial, sans-serif;
-        }
-        #svg-container {
-            width: 100%;
-            max-width: 1000px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            margin: 0 auto;
-        }
-        svg {
-            width: 100%;
-            height: auto;
-        }
-    </style>
+   <meta charset="UTF-8">
+   <title>SVG Canvas Helper</title>
+   <style>
+      body {
+         background-color: #242424;
+         margin: 0;
+         padding: 0;
+         display: flex;
+         justify-content: center;
+         font-family: Arial, sans-serif;
+      }
+      #svg-container {
+         width: 100%;
+         max-width: 1000px;
+         position: fixed;
+         top: 0;
+         left: 0;
+         right: 0;
+         margin: 0 auto;
+      }
+      svg {
+         width: 100%;
+         height: auto;
+      }
+      .svg_text {
+         -webkit-user-select: none;
+         -moz-user-select: none;
+         -ms-user-select: none;
+         user-select: none;
+      }
+   </style>
 </head>
 <body>
    <div id="svg-container">
@@ -38,16 +44,8 @@
 
 // Get the SVG canvas
 const canvas = document.getElementById('canvas');
+const print = console.log
 
-/**
- * Create a rectangle on the SVG canvas
- * @param {number} x - X coordinate of the rectangle
- * @param {number} y - Y coordinate of the rectangle
- * @param {number} width - Width of the rectangle
- * @param {number} height - Height of the rectangle
- * @param {string} backgroundColor - Background color of the rectangle
- * @returns {SVGRectElement} The created rectangle element
- */
 function createRectangle(x, y, width, height, backgroundColor) {
    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
    rect.setAttribute('x', x);
@@ -59,33 +57,16 @@ function createRectangle(x, y, width, height, backgroundColor) {
    return rect;
 }
 
-/**
- * Create a rectangle on the SVG canvas
- * @param {number} x - X coordinate of the rectangle
- * @param {number} y - Y coordinate of the rectangle
- * @param {number} width - Width of the rectangle
- * @param {number} height - Height of the rectangle
- * @param {string} backgroundColor - Background color of the rectangle
- * @returns {SVGRectElement} The created rectangle element
- */
-function createRectangle(x, y, width, height, backgroundColor) {
-   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-   rect.setAttribute('x', x);
-   rect.setAttribute('y', y);
-   rect.setAttribute('width', width);
-   rect.setAttribute('height', height);
-   rect.setAttribute('fill', backgroundColor);
-   canvas.appendChild(rect);
-   return rect;
+function createCircle(cx, cy, r, color, parent=null) {
+   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+   circle.setAttribute('cx', cx);
+   circle.setAttribute('cy', cy);
+   circle.setAttribute('r', r);
+   circle.setAttribute('fill', color);
+   (parent == null ? canvas : parent).appendChild(circle);
+   return circle;
 }
 
-/**
- * Load an image on the SVG canvas
- * @param {number} x - X coordinate of the image
- * @param {number} y - Y coordinate of the image
- * @param {string} href - URL or data URI of the image
- * @returns {SVGImageElement} The created image element
- */
 function loadImage(x, y, href) {
    const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
    image.setAttribute('x', x);
@@ -95,15 +76,6 @@ function loadImage(x, y, href) {
    return image;
 }
 
-/**
- * Add centered text to the SVG canvas
- * @param {number} x - X coordinate of the center point
- * @param {number} y - Y coordinate of the center point
- * @param {string} text - The text to display
- * @param {number} fontSize - Size of the font in pixels
- * @param {string} fontColor - Color of the text
- * @returns {SVGTextElement} The created text element
- */
 function addCenteredText(x, y, text, fontSize, fontColor) {
    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    textElement.setAttribute('x', x);
@@ -117,14 +89,6 @@ function addCenteredText(x, y, text, fontSize, fontColor) {
    return textElement;
 }
 
-/**
- * Add text with multiple colors to the SVG canvas
- * @param {number} x - X coordinate of the text
- * @param {number} y - Y coordinate of the text
- * @param {Array} textSegments - Array of objects with 'text' and 'color' properties
- * @param {number} fontSize - Size of the font in pixels
- * @returns {SVGTextElement} The created text element
- */
 function addMultiColorText(x, y, textSegments, fontSize) {
    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    textElement.setAttribute('x', x);
@@ -146,6 +110,10 @@ function addMultiColorText(x, y, textSegments, fontSize) {
 }
 
 
+
+
+
+
 function __create_text_elements(text, x, y, font_size, color) {
    const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    text_element.setAttribute('x', x);
@@ -153,13 +121,13 @@ function __create_text_elements(text, x, y, font_size, color) {
    text_element.setAttribute('text-anchor', 'middle');
    text_element.setAttribute('dominant-baseline', 'middle');
    text_element.setAttribute('font-size', font_size);
+   text_element.setAttribute('class', 'svg_text')
    canvas.appendChild(text_element);
 
    var original = text
    var in_section = false
    var data = {}
    while (text.length > 0) {
-      console.log(text)
       if (in_section) {
          var index = text.indexOf("}")
          if (index < 0) {
@@ -196,66 +164,167 @@ function __create_text_elements(text, x, y, font_size, color) {
    return data
 }
 
-function __create_slider(cx, cy, width) {
-   const SLIDER_RADIUS = 2
-   const KNOB_RADIUS   = 6
+function group(x, y, attr={}) {
+   return Object.assign(attr, {
+      tag: 'g',
+      x: x,
+      y: y,
+   })
+}
+function circle(cx, cy, r, color, attr={}) {
+   return Object.assign(attr, {
+      tag: 'circle',
+      cx: cx,
+      cy: cy,
+      r: r,
+      fill: color,
+   })
+}
 
-   
+var moving_knob = null
+function global_on_mouse_move(e) {
+   if (moving_knob == null) {
+      return
+   }
+   if (!e.buttons) {
+      moving_knob = null
+      return
+   }
+   const g = moving_knob
+   const mouse_x = e.clientX - e.screenX
+   const perc = Math.max(0.0, Math.min(1.0, (e.layerX - g.lx) / g.dx))
+   const index = Math.floor(perc * g.range + 0.5)
+   const cx = g.lx + g.dx * (index / g.range)
+   for (knob of g.knobs) {
+      knob.setAttribute("cx", cx)
+   }
+   g.update_data(index)
+}
+canvas.onmousemove = global_on_mouse_move
+
+function create(attrs, parent=null) {
+   const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
+   for (key in attrs) {
+      if (key != "tag") item.setAttribute(key, attrs[key])
+   }
+   (parent == null ? canvas : parent).appendChild(item);
+   return item;
+}
+
+function __create_slider(cx, cy, width, min, max, color, value) {
+   const SLIDER_RADIUS = 3
+   const SLIDER_COLOR  = "#242424"
+   const KNOB_RADIUS   = 10
+   const KNOB_COLOR    = "#696969"
+
+   const lx = cx-width/2
+   const rx = cx+width/2
+   createRectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR)
+   createCircle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR)
+   createCircle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR)
+
+   const vx = lx + (rx - lx) * ((value - min) / (max - min))
+
+   const g = create(group(0, 0))
+   const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
+   const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color), g)
+   g.onmousedown = () => (moving_knob = g)
+   g.min = min
+   g.range = (max-min)
+   g.lx = lx
+   g.dx = (rx-lx)
+   g.knobs = [knob_outer, knob_inner]
+   return g
 }
 
 function __create_stats_page(x, y, width, rows) {
-   const SECTION_HEIGHT = 20
-   var usable_width = width * 0.8
+   const SECTION_HEIGHT = 28
+   var usable_width = width * 0.75
    const background = createRectangle(x, y, width, 0, '#0f0f0f')
-   const data = {}
+   const cx = x + width/2
+   const BUFFER = 0.3 * SECTION_HEIGHT
 
-   var curr_y = y + 1.5*SECTION_HEIGHT
+   const starts = {}
+   const data = { text: [] }
+   function update_data(key, value) {
+      print(key)
+      for (t of data.text) {
+         for (k in t) {
+            if (k == key) {
+               for (ts of t[k]) {
+                  ts.textContent = value
+               }
+            }
+         }
+      }
+   }
+
+   var curr_y = y + BUFFER + SECTION_HEIGHT
    for (row of rows) {
       if (row.type == "text") {
-         var ret = __create_text_elements(row.value, x + width/2, curr_y, 20, row.color)
+         const ret = __create_text_elements(row.value, cx, curr_y, 20, row.color)
          if (ret != null) {
-            data[row.id] = ret
+            data.text.push(ret)
          }
       } else if (row.type == "slider") {
-
+         const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
+         const row_id = row.id
+         g.update_data = (v) => update_data(row_id, v)
+         starts[row.id] = [row.color, row.default]
+      } else if (row.type == "gap") {
+         // nothing
       } else {
          console.error(`got invalid row['type'] value '${row.type}'`)
       }
       curr_y += SECTION_HEIGHT
    }
-   background.setAttribute('height', curr_y + 0.5*SECTION_HEIGHT);
+
+   for (key in starts) {
+      for (t of data.text) {
+         for (k in t) {
+            if (k == key) {
+               for (ts of t[k]) {
+                  ts.setAttribute('fill', starts[key][0])
+                  ts.textContent = starts[key][1]
+               }
+            }
+         }
+      }
+   }
+
+   background.setAttribute('height', (curr_y + BUFFER) - y);
 }
 function add_section(name, color, icon, x, y, rows) {
    loadImage(x, y, icon)
    var items = []
-   __create_stats_page(x + 227, y, 240, rows)
+   __create_stats_page(x + 227, y, 360, rows)
 }
 
 add_section(
    "chestpiece",
    "#f779f7",
    "./chestpiece.png",
-   200,
+   150,
    200,
    [
       { "type":"text", "color":"#696969", "value":"Quality: ${quality}%" },
       { "type":"slider", "id":"quality", "min":0, "max":20, "default":20, "color":"#5bfee0" },
       // { "type":"compute", "id":"quality_f", "func": (p) => (1.0 + p/100.0) },
 
-      // { "type":"text", "color":"#696969", "value":"Base Energy Shield: ${base_value}" },
-      // { "type":"slider", "id":"base_value", "min":12, "max":47, "default":36, "color":"#00ff00" },
+      { "type":"text", "color":"#696969", "value":"Base Energy Shield: ${base_value}" },
+      { "type":"slider", "id":"base_value", "min":12, "max":47, "default":36, "color":"#00ff00" },
 
-      // { "type":"text", "color":"#7171da", "value":"+${flat_add} to Maximum Energy Shield" },
-      // { "type":"slider", "id":"flat_add", "min":16, "max":30, "default":21, "color":"#fe3521" },
+      { "type":"text", "color":"#7171da", "value":"+${flat_add} to Maximum Energy Shield" },
+      { "type":"slider", "id":"flat_add", "min":16, "max":30, "default":21, "color":"#fe3521" },
 
-      // { "type":"text", "color":"#7171da", "value":"${perc_incr}% Increased Energy Shield" },
-      // { "type":"slider", "id":"perc_incr", "min":20, "max":109, "default":54, "color":"#f2fc24" },
+      { "type":"text", "color":"#7171da", "value":"${perc_incr}% Increased Energy Shield" },
+      { "type":"slider", "id":"perc_incr", "min":20, "max":109, "default":54, "color":"#f2fc24" },
       // { "type":"compute", "id":"perc_incr_f", "func": (p) => (1.0 + p/100.0) },
       
-      // { "type":"gap" },
+      { "type":"gap" },
       
-      // { "type":"text", "color":"#696969", "value":"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
-      // { "type":"text", "color":"#696969", "value":"Item Energy Shield: ${chestpiece}" },
+      { "type":"text", "color":"#696969", "value":"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
+      { "type":"text", "color":"#696969", "value":"Item Energy Shield: ${chestpiece}" },
    ]
 )
 
