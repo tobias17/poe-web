@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SVG Canvas Helper</title>
+    <style>
+        body {
+            background-color: #242424;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+        }
+        #svg-container {
+            width: 100%;
+            max-width: 1000px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+   <div id="svg-container">
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+         <!-- Elements will be dynamically added here -->
+      </svg>
+   </div>
+
+   <script>
+
+// Get the SVG canvas
+const canvas = document.getElementById('canvas');
+
+/**
+ * Create a rectangle on the SVG canvas
+ * @param {number} x - X coordinate of the rectangle
+ * @param {number} y - Y coordinate of the rectangle
+ * @param {number} width - Width of the rectangle
+ * @param {number} height - Height of the rectangle
+ * @param {string} backgroundColor - Background color of the rectangle
+ * @returns {SVGRectElement} The created rectangle element
+ */
+function createRectangle(x, y, width, height, backgroundColor) {
+   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+   rect.setAttribute('x', x);
+   rect.setAttribute('y', y);
+   rect.setAttribute('width', width);
+   rect.setAttribute('height', height);
+   rect.setAttribute('fill', backgroundColor);
+   canvas.appendChild(rect);
+   return rect;
+}
+
+/**
+ * Create a rectangle on the SVG canvas
+ * @param {number} x - X coordinate of the rectangle
+ * @param {number} y - Y coordinate of the rectangle
+ * @param {number} width - Width of the rectangle
+ * @param {number} height - Height of the rectangle
+ * @param {string} backgroundColor - Background color of the rectangle
+ * @returns {SVGRectElement} The created rectangle element
+ */
+function createRectangle(x, y, width, height, backgroundColor) {
+   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+   rect.setAttribute('x', x);
+   rect.setAttribute('y', y);
+   rect.setAttribute('width', width);
+   rect.setAttribute('height', height);
+   rect.setAttribute('fill', backgroundColor);
+   canvas.appendChild(rect);
+   return rect;
+}
+
+/**
+ * Load an image on the SVG canvas
+ * @param {number} x - X coordinate of the image
+ * @param {number} y - Y coordinate of the image
+ * @param {string} href - URL or data URI of the image
+ * @returns {SVGImageElement} The created image element
+ */
+function loadImage(x, y, href) {
+   const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+   image.setAttribute('x', x);
+   image.setAttribute('y', y);
+   image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+   canvas.appendChild(image);
+   return image;
+}
+
+/**
+ * Add centered text to the SVG canvas
+ * @param {number} x - X coordinate of the center point
+ * @param {number} y - Y coordinate of the center point
+ * @param {string} text - The text to display
+ * @param {number} fontSize - Size of the font in pixels
+ * @param {string} fontColor - Color of the text
+ * @returns {SVGTextElement} The created text element
+ */
+function addCenteredText(x, y, text, fontSize, fontColor) {
+   const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+   textElement.setAttribute('x', x);
+   textElement.setAttribute('y', y);
+   textElement.setAttribute('text-anchor', 'middle');
+   textElement.setAttribute('dominant-baseline', 'middle');
+   textElement.setAttribute('font-size', fontSize);
+   textElement.setAttribute('fill', fontColor);
+   textElement.textContent = text;
+   canvas.appendChild(textElement);
+   return textElement;
+}
+
+/**
+ * Add text with multiple colors to the SVG canvas
+ * @param {number} x - X coordinate of the text
+ * @param {number} y - Y coordinate of the text
+ * @param {Array} textSegments - Array of objects with 'text' and 'color' properties
+ * @param {number} fontSize - Size of the font in pixels
+ * @returns {SVGTextElement} The created text element
+ */
+function addMultiColorText(x, y, textSegments, fontSize) {
+   const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+   textElement.setAttribute('x', x);
+   textElement.setAttribute('y', y);
+   textElement.setAttribute('text-anchor', 'middle');
+   textElement.setAttribute('dominant-baseline', 'middle');
+   textElement.setAttribute('font-size', fontSize);
+
+   // Create tspan elements for each text segment
+   textSegments.forEach(segment => {
+      const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan.setAttribute('fill', segment.color);
+      tspan.textContent = segment.text;
+      textElement.appendChild(tspan);
+   });
+
+   canvas.appendChild(textElement);
+   return textElement;
+}
+
+
+function __create_text_elements(text, x, y, font_size, color) {
+   const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+   text_element.setAttribute('x', x);
+   text_element.setAttribute('y', y);
+   text_element.setAttribute('text-anchor', 'middle');
+   text_element.setAttribute('dominant-baseline', 'middle');
+   text_element.setAttribute('font-size', font_size);
+   canvas.appendChild(text_element);
+
+   var original = text
+   var in_section = false
+   var data = {}
+   while (text.length > 0) {
+      console.log(text)
+      if (in_section) {
+         var index = text.indexOf("}")
+         if (index < 0) {
+            console.error(`unmatched brackets: '${original}'`)
+            return null
+         }
+         var key = text.slice(0, index)
+         if ( !(key in data) ) {
+            data[key] = []
+         }
+         const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
+         tspan.setAttribute('fill', color)
+         tspan.textContent = `[${key}]`
+         data[key].push(tspan)
+         text_element.appendChild(tspan)
+         text = text.slice(index + 1)
+         in_section = false
+      } else {
+         var index = text.indexOf("${")
+         var chunk = index < 0 ? text : text.slice(0, index)
+         const key = "color"
+         if ( !(key in data) ) {
+            data[key] = []
+         }
+         const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
+         tspan.setAttribute('fill', color)
+         tspan.textContent = chunk
+         data[key].push(tspan)
+         text_element.appendChild(tspan)
+         text = index < 0 ? "" : text.slice(index + 2)
+         in_section = true
+      }
+   }
+   return data
+}
+
+function __create_slider(cx, cy, width) {
+   const SLIDER_RADIUS = 2
+   const KNOB_RADIUS   = 6
+
+   
+}
+
+function __create_stats_page(x, y, width, rows) {
+   const SECTION_HEIGHT = 20
+   var usable_width = width * 0.8
+   const background = createRectangle(x, y, width, 0, '#0f0f0f')
+   const data = {}
+
+   var curr_y = y + 1.5*SECTION_HEIGHT
+   for (row of rows) {
+      if (row.type == "text") {
+         var ret = __create_text_elements(row.value, x + width/2, curr_y, 20, row.color)
+         if (ret != null) {
+            data[row.id] = ret
+         }
+      } else if (row.type == "slider") {
+
+      } else {
+         console.error(`got invalid row['type'] value '${row.type}'`)
+      }
+      curr_y += SECTION_HEIGHT
+   }
+   background.setAttribute('height', curr_y + 0.5*SECTION_HEIGHT);
+}
+function add_section(name, color, icon, x, y, rows) {
+   loadImage(x, y, icon)
+   var items = []
+   __create_stats_page(x + 227, y, 240, rows)
+}
+
+add_section(
+   "chestpiece",
+   "#f779f7",
+   "./chestpiece.png",
+   200,
+   200,
+   [
+      { "type":"text", "color":"#696969", "value":"Quality: ${quality}%" },
+      { "type":"slider", "id":"quality", "min":0, "max":20, "default":20, "color":"#5bfee0" },
+      // { "type":"compute", "id":"quality_f", "func": (p) => (1.0 + p/100.0) },
+
+      // { "type":"text", "color":"#696969", "value":"Base Energy Shield: ${base_value}" },
+      // { "type":"slider", "id":"base_value", "min":12, "max":47, "default":36, "color":"#00ff00" },
+
+      // { "type":"text", "color":"#7171da", "value":"+${flat_add} to Maximum Energy Shield" },
+      // { "type":"slider", "id":"flat_add", "min":16, "max":30, "default":21, "color":"#fe3521" },
+
+      // { "type":"text", "color":"#7171da", "value":"${perc_incr}% Increased Energy Shield" },
+      // { "type":"slider", "id":"perc_incr", "min":20, "max":109, "default":54, "color":"#f2fc24" },
+      // { "type":"compute", "id":"perc_incr_f", "func": (p) => (1.0 + p/100.0) },
+      
+      // { "type":"gap" },
+      
+      // { "type":"text", "color":"#696969", "value":"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
+      // { "type":"text", "color":"#696969", "value":"Item Energy Shield: ${chestpiece}" },
+   ]
+)
+
+   </script>
+</body>
+</html>
