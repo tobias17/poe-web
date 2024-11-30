@@ -56,14 +56,16 @@ function global_on_mouse_move(e) {
       return
    }
    const g = selected_slider
-   const mouse_x = e.clientX - e.screenX
-   const perc = Math.max(0.0, Math.min(1.0, (e.layerX - g.lx) / g.dx))
+   const CTM = canvas.getScreenCTM();
+   const mouse_x = (e.clientX - CTM.e) / CTM.a
+   const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
    const index = Math.floor(perc * g.range + 0.5)
    const cx = g.lx + g.dx * (index / g.range)
    for (knob of g.knobs) {
       knob.setAttribute("cx", cx)
    }
    g.update_data(index + g.min)
+   // print(e)
 }
 canvas.onmousemove = global_on_mouse_move
 
