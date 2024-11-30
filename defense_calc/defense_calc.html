@@ -124,56 +124,67 @@ function create(attrs, parent=null) {
 
 
 
-const FONT_SIZE   = 14
-const HUE_START   = -70
-const HUE_END     = 210
-const COLOR_COUNT = 12
-const color_choice_l = []
-const color_choice_g = []
-for (let i = 0; i < COLOR_COUNT; i++) {
-   var hue = HUE_START + (HUE_END - HUE_START) * (i / (COLOR_COUNT - 1))
-   if (hue < 0) hue += 360
-   color_choice_l.push(`hsl(${Math.round(hue)}deg, 92%, 70%)`)
-}
-function hash_str(text, shft=5) {
-   var hash = 0
-   if (text.length == 0) return 0
-   for (i = 0; i < text.length; i++) {
-      hash = ((hash << shft) - hash) + text.charCodeAt(i) | 0
+const FONT_SIZE = 14
+function sfc32(a, b, c, d) {
+   return function() {
+      a |= 0; b |= 0; c |= 0; d |= 0;
+      let t = (a + b | 0) + d | 0;
+      d = d + 1 | 0;
+      a = b ^ b >>> 9;
+      b = c + (c << 3) | 0;
+      c = (c << 21 | c >>> 11);
+      c = c + t | 0;
+      return (t >>> 0) / 4294967296;
    }
-   return hash
 }
-function select_colors(amount, name) {
-   function sfc32(a, b, c, d) {
-      return function() {
-         a |= 0; b |= 0; c |= 0; d |= 0;
-         let t = (a + b | 0) + d | 0;
-         d = d + 1 | 0;
-         a = b ^ b >>> 9;
-         b = c + (c << 3) | 0;
-         c = (c << 21 | c >>> 11);
-         c = c + t | 0;
-         return (t >>> 0) / 4294967296;
+function seed_rng(text) {
+   const h = []
+   for (let shft = 3; shft < 7; shft++) {
+      var hash = 0
+      if (text.length == 0) return sfc32(0, 1, 2, 3)
+      for (i = 0; i < text.length; i++) {
+         hash = ((hash << shft) - hash) + text.charCodeAt(i) | 0
       }
+      h.push(hash)
    }
-   const get_rand = sfc32(hash_str(name, 4), hash_str(name, 5), hash_str(name, 6), hash_str(name, 7));
-
-   if (amount > color_choice_l.length) {
-      throw Error(`Got color request for ${amount} but only have ${color_choice_l.length} choices`)
-   }
-   const choices = color_choice_l.slice()
-   const our_colors = []
-   while (amount > 0) {
-      const r = get_rand()
-      const index = Math.floor(r * choices.length)
-      our_colors.push(choices.splice(index, 1)[0])
-      amount -= 1
-   }
-   return our_colors
+   return sfc32(...h)
 }
-const x = []
-x.splice
+function evenly_space(amount, name, offset=null) {
+   const get_rand = seed_rng(name)
+   offset = offset == null ? get_rand() : offset
+   const values = []
+   for (let i = 0; i < amount; i++) {
+      const v = offset + (i/amount)
+      values.push(v > 1.0 ? v - 1.0 : v)
+   }
+   const order = []
+   while (values.length > 0) {
+      order.push(values.splice(Math.floor(get_rand() * values.length), 1)[0])
+   }
+   return order
+}
 
+const HUE_START = -70
+const HUE_END   = 210
+function rotate(value, amount) {
+   const sum = value + amount
+   return sum - Math.floor(sum)
+}
+function percent_to_hsvs(anchor, name, amount) {
+   const percs = evenly_space(amount, name, anchor)
+   const delta = anchor - percs[0]
+   for (i in percs) {
+      percs[i] = rotate(percs[i], delta)
+   }
+
+   const values = []
+   for (perc of percs) {
+      var hue = HUE_START + perc * (HUE_END - HUE_START)
+      if (hue < 0) hue += 360
+      values.push(`hsl(${Math.round(hue)}deg, 92%, 70%)`)
+   }
+   return values
+}
 
 
 var first_time = []
@@ -364,10 +375,17 @@ function add_section(name, color, icon, x, y, img_width, stats_width, rows) {
    __create_stats_page(x + img_width, y, stats_width, rows, name, color)
 }
 
+
+
+
+
 const GRAY_TEXT = "#696969"
 const PURP_TEXT = "#7171da"
 
-var colors = select_colors(5, "chestpiece+1")
+sections = evenly_space(4, "witch")
+
+var colors = percent_to_hsvs(sections.pop(), "chestpiece", 5)
+var primary = colors.pop()
 add_section(
    "chestpiece",
    "#f779f7",
@@ -396,11 +414,12 @@ add_section(
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
       { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:colors.pop(), from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+      { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
    ]
 )
 
-colors = select_colors(2, "int+1")
+colors = percent_to_hsvs(sections.pop(), "int", 2)
+primary = colors.pop()
 add_section(
    "int",
    "#f779f7",
@@ -418,11 +437,12 @@ add_section(
       { type:"text", color:GRAY_TEXT, value:"Floor[ ${amount} / 10 * 2 ]" },
       { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
 
-      { type:"calc", id:"perc_incr", color:colors.pop(), from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+      { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
 )
 
-colors = select_colors(4, "helmet")
+colors = percent_to_hsvs(sections.pop(), "helmet", 4)
+primary = colors.pop()
 add_section(
    "helmet",
    "#f779f7",
@@ -447,11 +467,12 @@ add_section(
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:colors.pop(), from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+      { type:"calc", id:"energy_shield", color:primary, from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
    ]
 )
 
-colors = select_colors(1, "character")
+colors = percent_to_hsvs(sections.pop(), "helmet", 1)
+primary = colors.pop()
 add_section(
    "character",
    "#f779f7",
@@ -466,7 +487,7 @@ add_section(
 
       { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
       { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
-      { type:"calc", id:"energy_shield", color:colors.pop(), from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+      { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
    ]
 )
 
