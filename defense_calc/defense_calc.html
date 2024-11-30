@@ -14,7 +14,7 @@
       }
       #svg-container {
          width: 100%;
-         max-width: 1000px;
+         max-width: 1200px;
          position: fixed;
          top: 0;
          left: 0;
@@ -35,7 +35,7 @@
 </head>
 <body>
    <div id="svg-container">
-      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800">
          <!-- Elements will be dynamically added here -->
       </svg>
    </div>
@@ -114,6 +114,8 @@ function create(attrs, parent=null) {
    (parent == null ? canvas : parent).appendChild(item);
    return item;
 }
+ 
+const FONT_SIZE = 14
 
 
 
@@ -170,14 +172,13 @@ function __create_text_elements(text, x, y, font_size, color) {
    return data
 }
 
-
 /*************************/
 /***  Slider Elements  ***/
 /*************************/
 function __create_slider(cx, cy, width, min, max, color, value) {
-   const SLIDER_RADIUS = 3
+   const SLIDER_RADIUS = 2.5
    const SLIDER_COLOR  = "#242424"
-   const KNOB_RADIUS   = 10
+   const KNOB_RADIUS   = 9
    const KNOB_COLOR    = "#696969"
 
    const lx = cx-width/2
@@ -200,12 +201,11 @@ function __create_slider(cx, cy, width, min, max, color, value) {
    return g
 }
 
-
 /************************/
 /***    Stats Page    ***/
 /************************/
 function __create_stats_page(x, y, width, rows, global_name, global_color) {
-   const SECTION_HEIGHT = 28
+   const SECTION_HEIGHT = 22
    var usable_width = width * 0.75
    const background = create(rectangle(x, y, width, 0, '#0f0f0f'))
    const cx = x + width/2
@@ -236,7 +236,7 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
    var curr_y = y + BUFFER + SECTION_HEIGHT
    for (row of rows) {
       if (row.type == "text") {
-         const ret = __create_text_elements(row.value, cx, curr_y, 20, row.color)
+         const ret = __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color)
          if (ret != null) {
             texts.push(ret)
          }
@@ -307,18 +307,20 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
 
    background.setAttribute('height', (curr_y + BUFFER) - y);
 }
-function add_section(name, color, icon, x, y, rows) {
+
+function add_section(name, color, icon, x, y, img_width, rows) {
    loadImage(x, y, icon)
    var items = []
-   __create_stats_page(x + 227, y, 360, rows, name, color)
+   __create_stats_page(x + img_width, y, 240, rows, name, color)
 }
 
 add_section(
    "chestpiece",
    "#f779f7",
    "./chestpiece.png",
-   150,
-   200,
+   100,
+   100,
+   227,
    [
       { type:"text", color:"#696969", value:"Quality: ${quality}%" },
       { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
@@ -340,6 +342,26 @@ add_section(
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
       { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
       { type:"calc", id:"chestpiece", from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+   ]
+)
+
+add_section(
+   "int",
+   "#f779f7",
+   "./int.png",
+   650,
+   100,
+   34,
+   [
+      { type:"text", color:"#696969", value:"Intelligence: ${amount}" },
+      { type:"slider", id:"amount", min:0, max:500, default:124, color:"#5bfee0" },
+
+      { type:"gap" },
+
+      { type:"text", color:"#696969", value:"Floor[ ${amount} / 10 * 2 ]" },
+      { type:"text", color:"#696969", value:"${int}% Increased Max Energy Shield" },
+
+      { type:"calc", id:"int", from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
 )
 
