@@ -157,15 +157,14 @@ function shuffle(list, rng) {
    }
    return order
 }
-function evenly_space(amount, name, offset=null) {
-   const get_rand = seed_rng(name)
-   offset = offset == null ? get_rand() : offset
+function evenly_space(amount, rng, offset=null) {
+   offset = offset == null ? rng() : offset
    const values = []
    for (let i = 0; i < amount; i++) {
       const v = offset + (i/amount)
       values.push(v > 1.0 ? v - 1.0 : v)
    }
-   return shuffle(values, get_rand)
+   return shuffle(values, rng)
 }
 
 const HUE_START = -70
@@ -177,22 +176,27 @@ function rotate(value, amount) {
 function norm_index(value, range, start=0) {
    return start + Math.round(rotate((value - start) / range))
 }
-function percent_to_hsvs(anchor, name, amount) {
-   const percs = evenly_space(amount, name, anchor)
+function fill_single_anchor(anchor, amount, rng) {
+   const percs = evenly_space(amount, rng, anchor)
    const delta = anchor - percs[0]
    for (i in percs) {
       percs[i] = rotate(percs[i], delta)
    }
-
+   return percs
+}
+function percs_to_hsvs(percs, local=true) {
    const values = []
    for (perc of percs) {
       var hue = HUE_START + perc * (HUE_END - HUE_START)
       if (hue < 0) hue += 360
-      values.push(`hsl(${Math.round(hue)}deg, 92%, 70%)`)
+      values.push(`hsl(${Math.round(hue)}deg, 92%, ${local ? 75 : 8}%)`)
    }
    return values
 }
-function percent_to_hsvs_multi(anchors, name, amount) {
+function anchor_to_local_hsvs(anchor, name, amount) {
+   return percs_to_hsvs(fill_single_anchor(anchor, amount, seed_rng(name)))
+}
+function multi_anchor_to_local_hsvs(anchors, name, amount) {
    var indeces = []
    for (a of anchors) {
       indeces.push(Math.floor(a * amount))
@@ -258,7 +262,7 @@ function percent_to_hsvs_multi(anchors, name, amount) {
    for (perc of percs) {
       var hue = HUE_START + perc * (HUE_END - HUE_START)
       if (hue < 0) hue += 360
-      values.push(`hsl(${Math.round(hue)}deg, 92%, 70%)`)
+      values.push(`hsl(${Math.round(hue)}deg, 92%, 75%)`)
    }
    return values
 }
@@ -444,12 +448,17 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
       curr_y += SECTION_HEIGHT
    }
 
-   background.setAttribute('height', (curr_y + BUFFER) - y);
+   background.setAttribute('height', (curr_y + BUFFER) - y)
+   return (curr_y + BUFFER) - y
 }
 
-function add_section(name, color, icon, x, y, img_width, stats_width, rows) {
+function add_section(name, color, icon, x, y, img_width, img_height, stats_width, rows) {
+   BORDER_SIZE = 5
+   create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
+   const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
    loadImage(x, y, icon)
-   __create_stats_page(x + img_width, y, stats_width, rows, name, color)
+   var height = __create_stats_page(x+img_width+BORDER_SIZE, y, stats_width, rows, name, color)
+   r.setAttribute('height', height + 2*BORDER_SIZE)
 }
 
 
@@ -459,17 +468,19 @@ function add_section(name, color, icon, x, y, img_width, stats_width, rows) {
 const GRAY_TEXT = "#696969"
 const PURP_TEXT = "#7171da"
 
-sections = evenly_space(4, "witch")
+sections = evenly_space(5, seed_rng("witch"))
+const global_colors = percs_to_hsvs(sections, false)
 
-var colors = percent_to_hsvs(sections.pop(), "chestpiece", 6)
+var colors = anchor_to_local_hsvs(sections.pop(), "chestpiece", 6)
 var primary = colors.pop()
 add_section(
    "chestpiece",
-   "#f779f7",
+   global_colors.pop(),
    "./chestpiece.png",
    100,
    100,
    227,
+   332,
    240,
    [
       { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
@@ -495,14 +506,15 @@ add_section(
    ]
 )
 
-colors = percent_to_hsvs(sections.pop(), "int", 2)
+colors = anchor_to_local_hsvs(sections.pop(), "int", 2)
 primary = colors.pop()
 add_section(
    "int",
-   "#f779f7",
+   global_colors.pop(),
    "./int.png",
    650,
    80,
+   34,
    34,
    280,
    [
@@ -517,16 +529,16 @@ add_section(
       { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
 )
-colors = percent_to_hsvs_multi([sections.pop(), sections.pop()], "helmet", 4)
-print(colors)
+colors = multi_anchor_to_local_hsvs([sections.pop(), sections.pop()], "helmet", 4)
 var primaries = [colors.pop(), colors.pop()]
 add_section(
    "helmet",
-   "#f779f7",
+   global_colors.pop(),
    "./helmet.png",
-   950,
+   940,
    280,
    206,
+   231,
    240,
    [
       { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
@@ -548,15 +560,16 @@ add_section(
    ]
 )
 
-colors = percent_to_hsvs(sections.pop(), "helmet", 1)
+colors = anchor_to_local_hsvs(sections.pop(), "helmet", 1)
 primary = colors.pop()
 add_section(
    "character",
-   "#f779f7",
+   global_colors.pop(),
    "./witch.png",
-   420,
+   400,
    480,
    201,
+   264,
    280,
    [
       { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${int_perc_incr_f:2} + ${helmet_perc_incr_f:2}) ]" },
