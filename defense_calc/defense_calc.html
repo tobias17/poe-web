@@ -188,15 +188,33 @@ function __create_text_elements(text, x, y, font_size, color, global_name) {
             console.error(`unmatched brackets: '${original}'`)
             return null
          }
-         const key = text.slice(0, index)
-         const id = `${global_name}.${key}`
+         var id = text.slice(0, index)
+         const fmt_index = id.indexOf(":")
+         var fmt_func = (v) => (v)
+         if (fmt_index > 0) {
+            const fmt_str = id.slice(fmt_index+1)
+            if (fmt_str.length != 1) {
+               console.error(`Expect exactly 1 format character, got '${fmt_str}' from '${id}'`)
+               return null
+            }
+            const amnt = parseInt(fmt_str, 10)
+            fmt_func = (v) => (v.toFixed(amnt))
+            id = id.slice(0, fmt_index)
+         }
+
+         const key = id.indexOf(".") < 0 ? `${global_name}.${id}` : id
          const t = create(tspan(color), text_element)
          t.textContent = `[${key}]`
+         const frozen_fmt_func = fmt_func
          function update_text() {
-            t.textContent = curr_vals[id]
+            const value = curr_vals[key]
+            if (value === null || value === undefined) {
+               return
+            }
+            t.textContent = frozen_fmt_func(value)
          }
-         add_sub(id, update_text)
-         first_time.push(() => t.setAttribute('fill', local_colors[id]))
+         add_sub(key, update_text)
+         first_time.push(() => t.setAttribute('fill', local_colors[key]))
          first_time.push(update_text)
          text = text.slice(index + 1)
          in_section = false
@@ -223,6 +241,10 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
    const BUFFER = 0.3 * SECTION_HEIGHT
 
    function update_data(key, value) {
+      if (value === null || value === undefined) {
+         console.error(`Got null value for key '${key}'`)
+         return
+      }
       curr_vals[key] = value
       if (key in stat_subs) {
          for (sub of stat_subs[key]) {
@@ -319,11 +341,11 @@ add_section(
 
       { type:"gap" },
 
-      { type:"text", color:GRAY_TEXT, value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f} ]" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
-      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
-      { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
+      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+      { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
       { type:"calc", id:"energy_shield", color:"#f779f7", from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
    ]
 )
@@ -343,9 +365,9 @@ add_section(
       { type:"gap" },
 
       { type:"text", color:GRAY_TEXT, value:"Floor[ ${amount} / 10 * 2 ]" },
-      { type:"text", color:GRAY_TEXT, value:"${int}% Increased Max Energy Shield" },
+      { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
 
-      { type:"calc", id:"int", from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+      { type:"calc", id:"perc_incr", from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
 )
 
@@ -369,16 +391,21 @@ add_section(
 
       { type:"gap" },
 
-      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f} ]" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f:2} ]" },
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
-      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
-      { type:"calc", id:"energy_shield", color:"#f779f7", from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) }
+      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+      { type:"calc", id:"energy_shield", color:"#f779f7", from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
    ]
 )
 
-__create_stats_page(500, 500, 240, [
-   { type:"text", color:GRAY_TEXT, value:"Floor[ ${helmet} ]" }
+__create_stats_page(500, 500, 280, [
+   { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${int_perc_incr_f:2} + ${helmet_perc_incr_f:2}) ]" },
+   { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
+
+   { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
+   { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
+   { type:"calc", id:"energy_shield", color:"#f779f7", from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
 ], "global", "#f779f7")
 
 for (func of first_time) {
