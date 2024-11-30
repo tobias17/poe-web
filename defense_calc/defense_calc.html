@@ -198,7 +198,7 @@ function global_on_mouse_move(e) {
    for (knob of g.knobs) {
       knob.setAttribute("cx", cx)
    }
-   g.update_data(index)
+   g.update_data(index + g.min)
 }
 canvas.onmousemove = global_on_mouse_move
 
@@ -316,9 +316,9 @@ function __create_stats_page(x, y, width, rows, global_name, global_color) {
          }
          update_calc()
          starts[row.id] = { color:color, value:curr_v[row.id] }
+         curr_y -= SECTION_HEIGHT
       } else if (row.type == "gap") {
          // pass
-
       } else {
          console.error(`got invalid row['type'] value '${row.type}'`)
       }
@@ -367,7 +367,7 @@ add_section(
 
       { type:"gap" },
 
-      { type:"text", color:"#696969", value:"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
+      { type:"text", color:"#696969", value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f} ]" },
       { type:"text", color:"#696969", value:"Item Energy Shield: ${chestpiece}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
