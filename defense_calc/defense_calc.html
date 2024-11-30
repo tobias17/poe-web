@@ -237,7 +237,7 @@ function __create_slider(cx, cy, width, min, max, color, value) {
    return g
 }
 
-function __create_stats_page(x, y, width, rows) {
+function __create_stats_page(x, y, width, rows, global_name, global_color) {
    const SECTION_HEIGHT = 28
    var usable_width = width * 0.75
    const background = createRectangle(x, y, width, 0, '#0f0f0f')
@@ -245,16 +245,23 @@ function __create_stats_page(x, y, width, rows) {
    const BUFFER = 0.3 * SECTION_HEIGHT
 
    const starts = {}
-   const data = { text: [] }
+   const texts  = []
+   const calcs  = {}
+   const curr_v = {}
    function update_data(key, value) {
-      print(key)
-      for (t of data.text) {
+      curr_v[key] = value
+      for (t of texts) {
          for (k in t) {
             if (k == key) {
                for (ts of t[k]) {
                   ts.textContent = value
                }
             }
+         }
+      }
+      if (key in calcs) {
+         for (calc of calcs[key]) {
+            calc()
          }
       }
    }
@@ -264,15 +271,54 @@ function __create_stats_page(x, y, width, rows) {
       if (row.type == "text") {
          const ret = __create_text_elements(row.value, cx, curr_y, 20, row.color)
          if (ret != null) {
-            data.text.push(ret)
+            texts.push(ret)
          }
       } else if (row.type == "slider") {
          const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
          const row_id = row.id
          g.update_data = (v) => update_data(row_id, v)
-         starts[row.id] = [row.color, row.default]
+         starts[row.id] = { color:row.color, value:row.default }
+         curr_v[row.id] = row.default
+      } else if (row.type == "calc") {
+         const row_id = row.id
+         const from = row.from
+         const func = row.func
+         var color =
+            row.id == global_name
+               ? global_color
+               : "color" in row
+                  ? row.color
+                  : from.length == 1
+                     ? starts[from].color
+                     : null
+         if (color == null) {
+            console.error(`could not determine color for calc '${row_id}'`)
+            continue
+         }
+
+         function update_calc() {
+            const params = []
+            for (key of from) {
+               params.push(curr_v[key])
+            }
+            const new_value = func(...params)
+            if (new_value == null) {
+               console.error(`got null result from ${row_id}, params=${params}`)
+            } else {
+               update_data(row_id, new_value)
+            }
+         }
+         for (key of row.from) {
+            if ( !(key in calcs) ) {
+               calcs[key] = []
+            }
+            calcs[key].push(update_calc)
+         }
+         update_calc()
+         starts[row.id] = { color:color, value:curr_v[row.id] }
       } else if (row.type == "gap") {
-         // nothing
+         // pass
+
       } else {
          console.error(`got invalid row['type'] value '${row.type}'`)
       }
@@ -280,12 +326,12 @@ function __create_stats_page(x, y, width, rows) {
    }
 
    for (key in starts) {
-      for (t of data.text) {
+      for (t of texts) {
          for (k in t) {
             if (k == key) {
                for (ts of t[k]) {
-                  ts.setAttribute('fill', starts[key][0])
-                  ts.textContent = starts[key][1]
+                  ts.setAttribute('fill', starts[key].color)
+                  ts.textContent = starts[key].value
                }
             }
          }
@@ -297,7 +343,7 @@ function __create_stats_page(x, y, width, rows) {
 function add_section(name, color, icon, x, y, rows) {
    loadImage(x, y, icon)
    var items = []
-   __create_stats_page(x + 227, y, 360, rows)
+   __create_stats_page(x + 227, y, 360, rows, name, color)
 }
 
 add_section(
@@ -307,24 +353,26 @@ add_section(
    150,
    200,
    [
-      { "type":"text", "color":"#696969", "value":"Quality: ${quality}%" },
-      { "type":"slider", "id":"quality", "min":0, "max":20, "default":20, "color":"#5bfee0" },
-      // { "type":"compute", "id":"quality_f", "func": (p) => (1.0 + p/100.0) },
+      { type:"text", color:"#696969", value:"Quality: ${quality}%" },
+      { type:"slider", id:"quality", min:0, max:20, default:20, color:"#5bfee0" },
 
-      { "type":"text", "color":"#696969", "value":"Base Energy Shield: ${base_value}" },
-      { "type":"slider", "id":"base_value", "min":12, "max":47, "default":36, "color":"#00ff00" },
+      { type:"text", color:"#696969", value:"Base Energy Shield: ${base_value}" },
+      { type:"slider", id:"base_value", min:12, max:47, default:36, color:"#00ff00" },
 
-      { "type":"text", "color":"#7171da", "value":"+${flat_add} to Maximum Energy Shield" },
-      { "type":"slider", "id":"flat_add", "min":16, "max":30, "default":21, "color":"#fe3521" },
+      { type:"text", color:"#7171da", value:"+${flat_add} to Maximum Energy Shield" },
+      { type:"slider", id:"flat_add", min:16, max:30, default:21, color:"#fe3521" },
 
-      { "type":"text", "color":"#7171da", "value":"${perc_incr}% Increased Energy Shield" },
-      { "type":"slider", "id":"perc_incr", "min":20, "max":109, "default":54, "color":"#f2fc24" },
-      // { "type":"compute", "id":"perc_incr_f", "func": (p) => (1.0 + p/100.0) },
-      
-      { "type":"gap" },
-      
-      { "type":"text", "color":"#696969", "value":"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
-      { "type":"text", "color":"#696969", "value":"Item Energy Shield: ${chestpiece}" },
+      { type:"text", color:"#7171da", value:"${perc_incr}% Increased Energy Shield" },
+      { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:"#f2fc24" },
+
+      { type:"gap" },
+
+      { type:"text", color:"#696969", value:"(${base_value} + ${flat_add}) * ${perc_incr_f} * ${quality_f}" },
+      { type:"text", color:"#696969", value:"Item Energy Shield: ${chestpiece}" },
+
+      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
+      { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0).toFixed(2) },
+      { type:"calc", id:"chestpiece", from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
    ]
 )
 
