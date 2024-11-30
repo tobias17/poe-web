@@ -46,27 +46,32 @@
 const canvas = document.getElementById('canvas');
 const print = console.log
 
-function createRectangle(x, y, width, height, backgroundColor) {
-   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-   rect.setAttribute('x', x);
-   rect.setAttribute('y', y);
-   rect.setAttribute('width', width);
-   rect.setAttribute('height', height);
-   rect.setAttribute('fill', backgroundColor);
-   canvas.appendChild(rect);
-   return rect;
+var selected_slider = null
+function global_on_mouse_move(e) {
+   if (selected_slider == null) {
+      return
+   }
+   if (!e.buttons) {
+      selected_slider = null
+      return
+   }
+   const g = selected_slider
+   const mouse_x = e.clientX - e.screenX
+   const perc = Math.max(0.0, Math.min(1.0, (e.layerX - g.lx) / g.dx))
+   const index = Math.floor(perc * g.range + 0.5)
+   const cx = g.lx + g.dx * (index / g.range)
+   for (knob of g.knobs) {
+      knob.setAttribute("cx", cx)
+   }
+   g.update_data(index + g.min)
 }
+canvas.onmousemove = global_on_mouse_move
 
-function createCircle(cx, cy, r, color, parent=null) {
-   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-   circle.setAttribute('cx', cx);
-   circle.setAttribute('cy', cy);
-   circle.setAttribute('r', r);
-   circle.setAttribute('fill', color);
-   (parent == null ? canvas : parent).appendChild(circle);
-   return circle;
-}
 
+
+/************************/
+/***    Common Lib    ***/
+/************************/
 function loadImage(x, y, href) {
    const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
    image.setAttribute('x', x);
@@ -75,45 +80,46 @@ function loadImage(x, y, href) {
    canvas.appendChild(image);
    return image;
 }
-
-function addCenteredText(x, y, text, fontSize, fontColor) {
-   const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-   textElement.setAttribute('x', x);
-   textElement.setAttribute('y', y);
-   textElement.setAttribute('text-anchor', 'middle');
-   textElement.setAttribute('dominant-baseline', 'middle');
-   textElement.setAttribute('font-size', fontSize);
-   textElement.setAttribute('fill', fontColor);
-   textElement.textContent = text;
-   canvas.appendChild(textElement);
-   return textElement;
+function group(x, y, attrs={}) {
+   return Object.assign(attrs, {
+      tag: 'g',
+      x: x,
+      y: y,
+   })
+}
+function circle(cx, cy, r, color, attrs={}) {
+   return Object.assign(attrs, {
+      tag: 'circle',
+      cx: cx,
+      cy: cy,
+      r: r,
+      fill: color,
+   })
+}
+function rectangle(x, y, w, h, color, attrs={}) {
+   return Object.assign(attrs, {
+      tag: 'rect',
+      x: x,
+      y: y,
+      width: w,
+      height: h,
+      fill: color,
+   })
+}
+function create(attrs, parent=null) {
+   const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
+   for (key in attrs) {
+      if (key != "tag") item.setAttribute(key, attrs[key])
+   }
+   (parent == null ? canvas : parent).appendChild(item);
+   return item;
 }
 
-function addMultiColorText(x, y, textSegments, fontSize) {
-   const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-   textElement.setAttribute('x', x);
-   textElement.setAttribute('y', y);
-   textElement.setAttribute('text-anchor', 'middle');
-   textElement.setAttribute('dominant-baseline', 'middle');
-   textElement.setAttribute('font-size', fontSize);
-
-   // Create tspan elements for each text segment
-   textSegments.forEach(segment => {
-      const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-      tspan.setAttribute('fill', segment.color);
-      tspan.textContent = segment.text;
-      textElement.appendChild(tspan);
-   });
-
-   canvas.appendChild(textElement);
-   return textElement;
-}
 
 
-
-
-
-
+/*************************/
+/***   Text Elements   ***/
+/*************************/
 function __create_text_elements(text, x, y, font_size, color) {
    const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    text_element.setAttribute('x', x);
@@ -164,53 +170,10 @@ function __create_text_elements(text, x, y, font_size, color) {
    return data
 }
 
-function group(x, y, attr={}) {
-   return Object.assign(attr, {
-      tag: 'g',
-      x: x,
-      y: y,
-   })
-}
-function circle(cx, cy, r, color, attr={}) {
-   return Object.assign(attr, {
-      tag: 'circle',
-      cx: cx,
-      cy: cy,
-      r: r,
-      fill: color,
-   })
-}
 
-var moving_knob = null
-function global_on_mouse_move(e) {
-   if (moving_knob == null) {
-      return
-   }
-   if (!e.buttons) {
-      moving_knob = null
-      return
-   }
-   const g = moving_knob
-   const mouse_x = e.clientX - e.screenX
-   const perc = Math.max(0.0, Math.min(1.0, (e.layerX - g.lx) / g.dx))
-   const index = Math.floor(perc * g.range + 0.5)
-   const cx = g.lx + g.dx * (index / g.range)
-   for (knob of g.knobs) {
-      knob.setAttribute("cx", cx)
-   }
-   g.update_data(index + g.min)
-}
-canvas.onmousemove = global_on_mouse_move
-
-function create(attrs, parent=null) {
-   const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
-   for (key in attrs) {
-      if (key != "tag") item.setAttribute(key, attrs[key])
-   }
-   (parent == null ? canvas : parent).appendChild(item);
-   return item;
-}
-
+/*************************/
+/***  Slider Elements  ***/
+/*************************/
 function __create_slider(cx, cy, width, min, max, color, value) {
    const SLIDER_RADIUS = 3
    const SLIDER_COLOR  = "#242424"
@@ -219,16 +182,16 @@ function __create_slider(cx, cy, width, min, max, color, value) {
 
    const lx = cx-width/2
    const rx = cx+width/2
-   createRectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR)
-   createCircle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR)
-   createCircle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR)
+   create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR))
+   create(circle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR))
+   create(circle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR))
 
    const vx = lx + (rx - lx) * ((value - min) / (max - min))
 
    const g = create(group(0, 0))
    const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
    const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color), g)
-   g.onmousedown = () => (moving_knob = g)
+   g.onmousedown = () => (selected_slider = g)
    g.min = min
    g.range = (max-min)
    g.lx = lx
@@ -237,10 +200,14 @@ function __create_slider(cx, cy, width, min, max, color, value) {
    return g
 }
 
+
+/************************/
+/***    Stats Page    ***/
+/************************/
 function __create_stats_page(x, y, width, rows, global_name, global_color) {
    const SECTION_HEIGHT = 28
    var usable_width = width * 0.75
-   const background = createRectangle(x, y, width, 0, '#0f0f0f')
+   const background = create(rectangle(x, y, width, 0, '#0f0f0f'))
    const cx = x + width/2
    const BUFFER = 0.3 * SECTION_HEIGHT
 
