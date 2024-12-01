@@ -36,27 +36,6 @@
 <body>
    <div id="svg-container">
       <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800">
-         <defs id="filters">
-            <filter id="underglow-template">
-               <feColorMatrix type="matrix" id="first-matrix" values="
-                  1 0 0 0 1
-                  1 0 0 0 0.5
-                  1 0 0 0 1
-                  0 0 0 1 1
-               " result="shiftedColor"/>
-               <feGaussianBlur in="shiftedColor" class="blur" stdDeviation="4" result="coloredBlur"/>
-               <feColorMatrix in="coloredBlur" type="matrix" values="
-                  20 0 0 0 0
-                  0 20 0 0 0
-                  0 0 20 0 0
-                  0 0 0 1 0
-               " result="blownUp"/>
-               <feMerge>
-                  <feMergeNode in="SourceGraphic"/>
-                  <feMergeNode in="blownUp"/>
-               </feMerge>
-            </filter>
-         </defs>
          <!-- Elements will be dynamically added here -->
       </svg>
    </div>
@@ -288,78 +267,6 @@ function multi_anchor_to_local_hsvs(anchors, name, amount) {
    return values
 }
 
-/**
- * Converts an HSL color value to RGB. Conversion formula
- * adapted from https://en.wikipedia.org/wiki/HSL_color_space.
- * Assumes h, s, and l are contained in the set [0, 1] and
- * returns r, g, and b in the set [0, 255].
- *
- * @param   {number}  h       The hue
- * @param   {number}  s       The saturation
- * @param   {number}  l       The lightness
- * @return  {Array}           The RGB representation
- */
- function hsl_to_rgb(hsl) {
-   let r, g, b;
-   if (hsl.s === 0) {
-      r = g = b = hsl.l; // achromatic
-   } else {
-      const q = hsl.l < 0.5 ? hsl.l * (1 + hsl.s) : hsl.l + hsl.s - hsl.l * hsl.s;
-      const p = 2 * hsl.l - q;
-      r = hue_to_rgb(p, q, hsl.h + 1/3);
-      g = hue_to_rgb(p, q, hsl.h);
-      b = hue_to_rgb(p, q, hsl.h - 1/3);
-   }
-   return { r:Math.round(r * 255), g:Math.round(g * 255), b:Math.round(b * 255) }
-}
-
-function hue_to_rgb(p, q, t) {
-   if (t < 0) t += 1;
-   if (t > 1) t -= 1;
-   if (t < 1/6) return p + (q - p) * 6 * t;
-   if (t < 1/2) return q;
-   if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-   return p;
-}
-
-function parse_hsl(text) {
-   const s = text.indexOf("(")
-   const e = text.indexOf(")")
-   if (s < 0 || e < 0 || s + 1 >= e) {
-      throw Error(`Could not parse_hsl from '${text}'`)
-   }
-   var inner = text.slice(s+1, e)
-   const chunks = []
-   while (inner.length > 0) {
-      const index = inner.indexOf(",")
-      if (index < 0) {
-         chunks.push(inner)
-         inner = ""
-      } else {
-         chunks.push(inner.slice(0, index).trim())
-         inner = inner.slice(index+1)
-      }
-   }
-   if (chunks.length != 3) {
-      throw Error(`Found ${chunks.length} chunks parsing '${text}', expected 3`)
-   }
-   return { h:parseInt(chunks[0].replace('deg',''))/360.0, s:parseFloat(chunks[1].replace('%',''))/100.0, l:parseFloat(chunks[2].replace('%',''))/100.0 }
-}
-
-function make_glow_style(rgb, id) {
-   const template = canvas.querySelector(`#underglow-template`)
-   const element = template.cloneNode(true)
-   canvas.querySelector('#filters').appendChild(element)
-   element.setAttribute('id', id)
-   const mat = canvas.querySelector(`#${id} feColorMatrix#first-matrix`)
-   const values = [
-      0, 0, 0, 0, rgb.r/255.0,
-      0, 0, 0, 0, rgb.g/255.0,
-      0, 0, 0, 0, rgb.b/255.0,
-      0, 0, 0, 1, 0
-   ]
-   mat.setAttribute('values', values.map(v => v.toFixed(4)).join(' '));
-}
 
 
 
@@ -407,7 +314,7 @@ function __create_slider(cx, cy, width, min, max, color, value) {
 /*************************/
 /***   Text Elements   ***/
 /*************************/
-function __create_text_elements(text, x, y, font_size, color, parent_name, glow_id) {
+function __create_text_elements(text, x, y, font_size, color, parent_name) {
    const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    text_element.setAttribute('x', x);
    text_element.setAttribute('y', y);
@@ -441,7 +348,7 @@ function __create_text_elements(text, x, y, font_size, color, parent_name, glow_
          }
 
          const key = id.indexOf(".") < 0 ? `${parent_name}.${id}` : id
-         const t = create(tspan(color), text_element) // , {filter:`url(#${glow_id})`}
+         const t = create(tspan(color), text_element)
          t.textContent = `[${key}]`
          const frozen_fmt_func = fmt_func
          function update_text() {
@@ -490,14 +397,12 @@ function __create_stats_page(x, y, width, rows, parent_name, global_color) {
          }
       }
    }
-   // const glow_style = `underglow-${parent_name}`
-   // make_glow_style(hsl_to_rgb(parse_hsl(global_color)), glow_style)
 
    var curr_y = y + BUFFER + SECTION_HEIGHT
    for (row of rows) {
       const row_id = `${parent_name}.${row.id}`
       if (row.type == "text") {
-         __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, parent_name, null)
+         __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, parent_name)
       } else if (row.type == "slider") {
          const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
          g.update_data = (v) => update_data(row_id, v)
