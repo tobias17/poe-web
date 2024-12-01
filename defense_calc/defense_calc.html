@@ -36,6 +36,17 @@
 <body>
    <div id="svg-container">
       <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800">
+         <defs>
+           <filter id="glow">
+            <feGaussianBlur class="blur" stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+               <feMergeNode in="SourceGraphic"/>
+               <feMergeNode in="coloredBlur"/>
+            </feMerge>
+         </filter>
+         </defs>
+         <g id="lower-group"></g>
+         <g id="upper-group"></g>
          <!-- Elements will be dynamically added here -->
       </svg>
    </div>
@@ -44,6 +55,8 @@
 
 // Get the SVG canvas
 const canvas = document.getElementById('canvas');
+const lower_group = document.getElementById('lower-group');
+const upper_group = document.getElementById('upper-group');
 const print = console.log
 
 var selected_slider = null
@@ -107,6 +120,17 @@ function rectangle(x, y, w, h, color, attrs={}) {
       fill: color,
    })
 }
+function line(x1, y1, x2, y2, r, color, attrs={}) {
+   return Object.assign(attrs, {
+      tag: 'line',
+      x1: x1,
+      y1: y1,
+      x2: x2,
+      y2: y2,
+      'stroke-width': r,
+      stroke: color,
+   })
+}
 function tspan(color, attrs={}) {
    return Object.assign(attrs, {
       tag: 'tspan',
@@ -118,7 +142,7 @@ function create(attrs, parent=null) {
    for (key in attrs) {
       if (key != "tag") item.setAttribute(key, attrs[key])
    }
-   (parent == null ? canvas : parent).appendChild(item);
+   (parent == null ? upper_group : parent).appendChild(item);
    return item;
 }
 
@@ -266,6 +290,9 @@ function multi_anchor_to_local_hsvs(anchors, name, amount) {
    }
    return values
 }
+function parse_parent(global_name) {
+   return global_name.split(".")[0]
+}
 
 
 
@@ -287,9 +314,9 @@ function add_sub(key, value) {
 /*************************/
 function __create_slider(cx, cy, width, min, max, color, value) {
    const SLIDER_RADIUS = 2.5
-   const SLIDER_COLOR  = "#242424"
+   const SLIDER_COLOR  = "#181818"
    const KNOB_RADIUS   = 9
-   const KNOB_COLOR    = "#696969"
+   const KNOB_COLOR    = "#404040"
 
    const lx = cx-width/2
    const rx = cx+width/2
@@ -301,7 +328,7 @@ function __create_slider(cx, cy, width, min, max, color, value) {
 
    const g = create(group(0, 0))
    const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
-   const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color), g)
+   const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
    g.onmousedown = () => (selected_slider = g)
    g.min = min
    g.range = (max-min)
@@ -314,6 +341,7 @@ function __create_slider(cx, cy, width, min, max, color, value) {
 /*************************/
 /***   Text Elements   ***/
 /*************************/
+const pointer_data = []
 function __create_text_elements(text, x, y, font_size, color, parent_name) {
    const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
    text_element.setAttribute('x', x);
@@ -347,7 +375,19 @@ function __create_text_elements(text, x, y, font_size, color, parent_name) {
             id = id.slice(0, fmt_index)
          }
 
-         const key = id.indexOf(".") < 0 ? `${parent_name}.${id}` : id
+         if (id.indexOf(".") < 0) {
+            id = `${parent_name}.${id}`
+         } else {
+            const other_name = parse_parent(id)
+            if (other_name != parent_name) {
+               pointer_data.push({
+                  src: parent_name,
+                  dst: other_name,
+                  key: id,
+               })
+            }
+         }
+         const key = id
          const t = create(tspan(color), text_element)
          t.textContent = `[${key}]`
          const frozen_fmt_func = fmt_func
@@ -361,6 +401,7 @@ function __create_text_elements(text, x, y, font_size, color, parent_name) {
          add_sub(key, update_text)
          first_time.push(() => t.setAttribute('fill', local_colors[key]))
          first_time.push(update_text)
+
          text = text.slice(index + 1)
          in_section = false
       } else {
@@ -377,13 +418,16 @@ function __create_text_elements(text, x, y, font_size, color, parent_name) {
 /************************/
 /***    Stats Page    ***/
 /************************/
+const parent_centers = {}
+const parent_colors = {}
 const local_colors = {}
-function __create_stats_page(x, y, width, rows, parent_name, global_color) {
+function __create_stats_page(x, y, width, rows, parent_name, parent_color, parent_cx, parent_cy) {
    const SECTION_HEIGHT = 22
    var usable_width = width * 0.75
    const background = create(rectangle(x, y, width, 0, '#060606'))
    const cx = x + width/2
    const BUFFER = 0.3 * SECTION_HEIGHT
+   parent_colors[parent_name] = parent_color
 
    function update_data(key, value) {
       if (value === null || value === undefined) {
@@ -442,6 +486,15 @@ function __create_stats_page(x, y, width, rows, parent_name, global_color) {
          }
          for (key of from_keys) {
             add_sub(key, update_calc)
+            const other_name = parse_parent(key)
+            if (other_name != parent_name) {
+               pointer_data.push({
+                  src: parent_name,
+                  dst: other_name,
+                  key: id,
+                  from: key,
+               })
+            }
          }
          curr_y -= SECTION_HEIGHT
       } else if (row.type == "gap") {
@@ -452,17 +505,19 @@ function __create_stats_page(x, y, width, rows, parent_name, global_color) {
       curr_y += SECTION_HEIGHT
    }
 
-   background.setAttribute('height', (curr_y + BUFFER) - y)
-   return (curr_y + BUFFER) - y
+   const height = (curr_y + BUFFER) - y
+   background.setAttribute('height', height)
+   parent_centers[parent_name] = { x:cx, y:y+height/2 }
+   return height
 }
 
 function add_section(name, color, icon, x, y, img_width, img_height, stats_width, rows) {
-   BORDER_SIZE = 5
-   create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
-   const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
+   BORDER_SIZE = 0
+   // create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
+   // const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
    loadImage(x, y, icon)
    var height = __create_stats_page(x+img_width+BORDER_SIZE, y, stats_width, rows, name, color)
-   r.setAttribute('height', height + 2*BORDER_SIZE)
+   // r.setAttribute('height', height + 2*BORDER_SIZE)
 }
 
 
@@ -602,6 +657,56 @@ for (func of first_time) {
 for (key in stat_subs) {
    for (sub of stat_subs[key]) {
       sub()
+   }
+}
+for (i1 in pointer_data) {
+   const data1 = pointer_data[i1]
+   const like = [data1]
+   var use = true
+   for (i2 in pointer_data) {
+      if (i1 == i2) {
+         continue
+      }
+
+      const data2 = pointer_data[i2]
+      if (data1.src == data2.src && data1.dst == data2.dst) {
+         if (i2 < i1) {
+            use = false
+            break
+         } else {
+            like.push(data2)
+         }
+      }
+   }
+   if (use) {
+      const full = []
+      for (let i = 0; i < like.length; i++) {
+         if (like[i].key in local_colors) {
+            full.push(like[i])
+         }
+      }
+      if (full.length == 1) {
+         const d  = full[0]
+         const p1 = parent_centers[d.src]
+         const p2 = parent_centers[d.dst]
+         const c  = local_colors[d.key]
+         create(line(p1.x, p1.y, p2.x, p2.y, 4, c), lower_group)
+      } else {
+         const SEP_DIST = 12
+         const d  = like[0]
+         const p1 = parent_centers[d.src]
+         const p2 = parent_centers[d.dst]
+         const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
+         const vec_x = Math.cos(angle)
+         const vec_y = Math.sin(angle)
+         for (let i = 0; i < full.length; i++) {
+            const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
+            const dx = vec_x * scale
+            const dy = vec_y * scale
+            const c = local_colors[full[i].key]
+            create(line(p1.x+dx, p1.y+dy, p2.x+dx, p2.y+dy, 4, c), lower_group)
+         }
+      }
    }
 }
 
