@@ -421,7 +421,7 @@ function __create_text_elements(text, x, y, font_size, color, parent_name) {
 const parent_centers = {}
 const parent_colors = {}
 const local_colors = {}
-function __create_stats_page(x, y, width, rows, parent_name, parent_color, parent_cx, parent_cy) {
+function __create_stats_page(x, y, width, rows, parent_name, parent_color) {
    const SECTION_HEIGHT = 34
    var usable_width = width * 0.75
    const background = create(rectangle(x, y, width, 0, '#060606'))
@@ -467,6 +467,8 @@ function __create_stats_page(x, y, width, rows, parent_name, parent_color, paren
                   ? local_colors[from_keys[0]]
                   : null
          if (color == null) {
+            print(local_colors)
+            print(from_keys)
             console.error(`could not determine color for calc '${row_id}'`)
             continue
          }
@@ -528,7 +530,7 @@ const GRAY_TEXT = "#696969"
 const PURP_TEXT = "#7171da"
 
 var section_i = 0
-const sections = evenly_space(5, seed_rng("witch"))
+const sections = evenly_space(7, seed_rng("1337"))
 const global_colors = percs_to_hsvs(sections, false)
 
 var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
@@ -562,7 +564,7 @@ add_section(
 
       { type:"gap" },
 
-      { type:"text", color:GRAY_TEXT, value:"Floor[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+      { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
@@ -595,7 +597,7 @@ add_section(
 
       { type:"gap" },
 
-      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f:2} ]" },
+      { type:"text", color:GRAY_TEXT, value:"[ ${base_value} * ${quality_f:2} ]" },
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
@@ -617,11 +619,11 @@ add_section(
    430,
    [
       { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
-      { type:"slider", id:"amount", min:0, max:500, default:124, color:pop_color() },
+      { type:"slider", id:"amount", min:0, max:1000, default:491, color:pop_color() },
 
       { type:"gap" },
 
-      { type:"text", color:GRAY_TEXT, value:"Floor[ ${amount} / 10 * 2 ]" },
+      { type:"text", color:GRAY_TEXT, value:"[ ${amount} / 10 * 2 ]" },
       { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
 
       { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
@@ -629,27 +631,53 @@ add_section(
 )
 section_i += 1
 
-colors = anchor_to_local_hsvs(sections[section_i], "helmet", 1)
+colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "hacks", 2)
+primaries = [pop_color(), pop_color()]
+add_section(
+   "hacks",
+   global_colors[section_i],
+   "",
+   1500,
+   620,
+   2,
+   2,
+   460,
+   [
+      { type:"text", color:GRAY_TEXT, value:"${perc_incr_c}% Increased Max Energy Shield" },
+      { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:primaries[0] },
+
+      { type:"text", color:GRAY_TEXT, value:"${more_c}% More Max Energy Shield" },
+      { type:"slider", id:"more", min:0, max:1, default:0, color:primaries[1] },
+
+      { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
+      { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
+   ]
+)
+section_i += 2
+
+colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
 primary = pop_color()
 add_section(
    "character",
    global_colors[section_i],
    "./witch.png",
-   700,
+   550,
    650,
    201,
    264,
-   460,
+   600,
    [
-      { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2}) ]" },
+      { type:"text", color:GRAY_TEXT, value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
       { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
       { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
-      { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+      { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
+      { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"], func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm) },
    ]
 )
 section_i += 1
+
 
 for (func of first_time) {
    func()
@@ -660,6 +688,7 @@ for (key in stat_subs) {
    }
 }
 for (i1 in pointer_data) {
+   const LINE_WIDTH = 2
    const data1 = pointer_data[i1]
    const like = [data1]
    var use = true
@@ -690,9 +719,9 @@ for (i1 in pointer_data) {
          const p1 = parent_centers[d.src]
          const p2 = parent_centers[d.dst]
          const c  = local_colors[d.key]
-         create(line(p1.x, p1.y, p2.x, p2.y, 4, c), lower_group)
+         create(line(p1.x, p1.y, p2.x, p2.y, LINE_WIDTH, c), lower_group)
       } else {
-         const SEP_DIST = 12
+         const SEP_DIST = 24
          const d  = like[0]
          const p1 = parent_centers[d.src]
          const p2 = parent_centers[d.dst]
@@ -704,7 +733,7 @@ for (i1 in pointer_data) {
             const dx = vec_x * scale
             const dy = vec_y * scale
             const c = local_colors[full[i].key]
-            create(line(p1.x+dx, p1.y+dy, p2.x+dx, p2.y+dy, 4, c), lower_group)
+            create(line(p1.x, p1.y, p2.x+dx, p2.y+dy, LINE_WIDTH, c), lower_group)
          }
       }
    }
