@@ -35,7 +35,7 @@
 </head>
 <body>
    <div id="svg-container">
-      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800">
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1200">
          <defs>
            <filter id="glow">
             <feGaussianBlur class="blur" stdDeviation="2" result="coloredBlur"/>
@@ -148,7 +148,7 @@ function create(attrs, parent=null) {
 
 
 
-const FONT_SIZE = 14
+const FONT_SIZE = 24
 function sfc32(a, b, c, d) {
    return function() {
       a |= 0; b |= 0; c |= 0; d |= 0;
@@ -191,8 +191,8 @@ function evenly_space(amount, rng, offset=null) {
    return shuffle(values, rng)
 }
 
-const HUE_START = -70
-const HUE_END   = 210
+const HUE_START = -80
+const HUE_END   = 220
 function rotate(value, amount) {
    const sum = value + amount
    return sum - Math.floor(sum)
@@ -313,9 +313,9 @@ function add_sub(key, value) {
 /***  Slider Elements  ***/
 /*************************/
 function __create_slider(cx, cy, width, min, max, color, value) {
-   const SLIDER_RADIUS = 2.5
+   const SLIDER_RADIUS = 4
    const SLIDER_COLOR  = "#181818"
-   const KNOB_RADIUS   = 9
+   const KNOB_RADIUS   = 15
    const KNOB_COLOR    = "#404040"
 
    const lx = cx-width/2
@@ -422,7 +422,7 @@ const parent_centers = {}
 const parent_colors = {}
 const local_colors = {}
 function __create_stats_page(x, y, width, rows, parent_name, parent_color, parent_cx, parent_cy) {
-   const SECTION_HEIGHT = 22
+   const SECTION_HEIGHT = 34
    var usable_width = width * 0.75
    const background = create(rectangle(x, y, width, 0, '#060606'))
    const cx = x + width/2
@@ -542,11 +542,11 @@ add_section(
    "chestpiece",
    global_colors[section_i],
    "./chestpiece.png",
-   100,
-   100,
+   60,
+   150,
    227,
    332,
-   240,
+   380,
    [
       { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
       { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
@@ -572,17 +572,49 @@ add_section(
 )
 section_i += 1
 
+colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
+var primaries = [pop_color(), pop_color()]
+add_section(
+   "helmet",
+   global_colors[section_i+1],
+   "./helmet.png",
+   720,
+   60,
+   206,
+   231,
+   410,
+   [
+      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
+      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
+
+      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
+      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
+
+      { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
+      { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:primaries[0] },
+
+      { type:"gap" },
+
+      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f:2} ]" },
+      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
+
+      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+      { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+   ]
+)
+section_i += 2
+
 colors = anchor_to_local_hsvs(sections[section_i], "int", 2)
 primary = pop_color()
 add_section(
    "int",
    global_colors[section_i],
    "./int.png",
-   650,
-   80,
+   1410,
+   300,
    34,
    34,
-   280,
+   430,
    [
       { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
       { type:"slider", id:"amount", min:0, max:500, default:124, color:pop_color() },
@@ -597,51 +629,19 @@ add_section(
 )
 section_i += 1
 
-colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
-var primaries = [pop_color(), pop_color()]
-add_section(
-   "helmet",
-   global_colors[section_i+1],
-   "./helmet.png",
-   940,
-   280,
-   206,
-   231,
-   240,
-   [
-      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-      { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
-      { type:"slider", id:"global_perc_incr", min:18, max:22, default:21, color:primaries[0] },
-
-      { type:"gap" },
-
-      { type:"text", color:GRAY_TEXT, value:"Floor[ ${base_value} * ${quality_f:2} ]" },
-      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
-
-      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
-   ]
-)
-section_i += 2
-
 colors = anchor_to_local_hsvs(sections[section_i], "helmet", 1)
 primary = pop_color()
 add_section(
    "character",
    global_colors[section_i],
    "./witch.png",
-   400,
-   480,
+   700,
+   650,
    201,
    264,
-   280,
+   460,
    [
-      { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${int_perc_incr_f:2} + ${helmet_perc_incr_f:2}) ]" },
+      { type:"text", color:GRAY_TEXT, value:"Floor[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2}) ]" },
       { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
