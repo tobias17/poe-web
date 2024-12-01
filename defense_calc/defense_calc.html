@@ -468,14 +468,20 @@ function add_section(name, color, icon, x, y, img_width, img_height, stats_width
 const GRAY_TEXT = "#696969"
 const PURP_TEXT = "#7171da"
 
-sections = evenly_space(5, seed_rng("witch"))
+var section_i = 0
+const sections = evenly_space(5, seed_rng("witch"))
 const global_colors = percs_to_hsvs(sections, false)
 
-var colors = anchor_to_local_hsvs(sections.pop(), "chestpiece", 6)
-var primary = colors.pop()
+var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
+function pop_color() {
+   const x = colors.slice(0,1)[0]
+   colors = colors.slice(1)
+   return x
+}
+var primary = pop_color()
 add_section(
    "chestpiece",
-   global_colors.pop(),
+   global_colors[section_i],
    "./chestpiece.png",
    100,
    100,
@@ -484,16 +490,16 @@ add_section(
    240,
    [
       { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-      { type:"slider", id:"quality", min:0, max:20, default:20, color:colors.pop() },
+      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
 
       { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-      { type:"slider", id:"base_value", min:12, max:47, default:36, color:colors.pop() },
+      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
 
       { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
-      { type:"slider", id:"flat_add", min:16, max:30, default:21, color:colors.pop() },
+      { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
 
       { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
-      { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:colors.pop() },
+      { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
 
       { type:"gap" },
 
@@ -505,12 +511,13 @@ add_section(
       { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
    ]
 )
+section_i += 1
 
-colors = anchor_to_local_hsvs(sections.pop(), "int", 2)
-primary = colors.pop()
+colors = anchor_to_local_hsvs(sections[section_i], "int", 2)
+primary = pop_color()
 add_section(
    "int",
-   global_colors.pop(),
+   global_colors[section_i],
    "./int.png",
    650,
    80,
@@ -519,7 +526,7 @@ add_section(
    280,
    [
       { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
-      { type:"slider", id:"amount", min:0, max:500, default:124, color:colors.pop() },
+      { type:"slider", id:"amount", min:0, max:500, default:124, color:pop_color() },
 
       { type:"gap" },
 
@@ -529,11 +536,13 @@ add_section(
       { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
    ]
 )
-colors = multi_anchor_to_local_hsvs([sections.pop(), sections.pop()], "helmet", 4)
-var primaries = [colors.pop(), colors.pop()]
+section_i += 1
+
+colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
+var primaries = [pop_color(), pop_color()]
 add_section(
    "helmet",
-   global_colors.pop(),
+   global_colors[section_i+1],
    "./helmet.png",
    940,
    280,
@@ -542,13 +551,13 @@ add_section(
    240,
    [
       { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-      { type:"slider", id:"quality", min:0, max:20, default:20, color:colors.pop() },
+      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
 
       { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-      { type:"slider", id:"base_value", min:12, max:47, default:36, color:colors.pop() },
+      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
 
       { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
-      { type:"slider", id:"global_perc_incr", min:18, max:22, default:20, color:primaries.pop() },
+      { type:"slider", id:"global_perc_incr", min:18, max:22, default:21, color:primaries[0] },
 
       { type:"gap" },
 
@@ -556,15 +565,16 @@ add_section(
       { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
 
       { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:primaries.pop(), from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+      { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
    ]
 )
+section_i += 2
 
-colors = anchor_to_local_hsvs(sections.pop(), "helmet", 1)
-primary = colors.pop()
+colors = anchor_to_local_hsvs(sections[section_i], "helmet", 1)
+primary = pop_color()
 add_section(
    "character",
-   global_colors.pop(),
+   global_colors[section_i],
    "./witch.png",
    400,
    480,
@@ -580,6 +590,7 @@ add_section(
       { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
    ]
 )
+section_i += 1
 
 for (func of first_time) {
    func()
