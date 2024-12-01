@@ -16,7 +16,7 @@
          width: 100%;
          max-width: 100%;
          position: fixed;
-         top: 0;
+         top: 40;
          left: 0;
          right: 0;
          margin: 0 auto;
@@ -24,6 +24,19 @@
       svg {
          width: 100%;
          height: auto;
+         position: absolute;
+         top: 50px;
+         left: 0;
+      }
+      button {
+         margin-top: 8px;
+         margin-left: 4px;
+         margin-right: 4px;
+         margin-bottom: 8px;
+         padding: 4px;
+         border: none;
+         border-radius: 4px;
+         cursor: pointer;
       }
       .svg_text {
          -webkit-user-select: none;
@@ -31,11 +44,18 @@
          -ms-user-select: none;
          user-select: none;
       }
+      .hidden {
+         visibility: hidden;
+      }
    </style>
 </head>
 <body>
+   <div>
+      <button onclick="select_tab(0)">Energy Shield</button>
+      <button onclick="select_tab(1)">Melee Attack</button>
+   </div>
    <div id="svg-container">
-      <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000">
+      <svg id="canvas-template" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000" class="hidden">
          <defs>
            <filter id="glow">
             <feGaussianBlur class="blur" stdDeviation="2" result="coloredBlur"/>
@@ -52,703 +72,791 @@
    </div>
 
    <script>
-
-// Get the SVG canvas
-const canvas = document.getElementById('canvas');
-const lower_group = document.getElementById('lower-group');
-const upper_group = document.getElementById('upper-group');
 const print = console.log
 
-var selected_slider = null
-function global_on_mouse_move(e) {
-   if (selected_slider == null) {
-      return
+const tab_names = [
+   "energy_shield",
+   "melee_attack",
+]
+DEFAULT_TAB = 0
+
+const TAB_COUNT = 2
+const tabs = []
+for (let i = 0; i < TAB_COUNT; i++) {
+   tabs.push(null)
+}
+function select_tab(tab_i) {
+   if (tabs[tab_i] == null) {
+      create_tab(tab_i)
    }
-   if (!e.buttons) {
-      selected_slider = null
-      return
-   }
-   const g = selected_slider
-   const CTM = canvas.getScreenCTM();
-   const mouse_x = (e.clientX - CTM.e) / CTM.a
-   const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
-   const index = Math.floor(perc * g.range + 0.5)
-   const cx = g.lx + g.dx * (index / g.range)
-   for (knob of g.knobs) {
-      knob.setAttribute("cx", cx)
-   }
-   g.update_data(index + g.min)
-}
-canvas.onmousemove = global_on_mouse_move
-
-
-
-/************************/
-/***    Common Lib    ***/
-/************************/
-function loadImage(x, y, href) {
-   const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-   image.setAttribute('x', x);
-   image.setAttribute('y', y);
-   image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
-   canvas.appendChild(image);
-   return image;
-}
-function group(x, y, attrs={}) {
-   return Object.assign(attrs, {
-      tag: 'g',
-      x: x,
-      y: y,
-   })
-}
-function circle(cx, cy, r, color, attrs={}) {
-   return Object.assign(attrs, {
-      tag: 'circle',
-      cx: cx,
-      cy: cy,
-      r: r,
-      fill: color,
-   })
-}
-function rectangle(x, y, w, h, color, attrs={}) {
-   return Object.assign(attrs, {
-      tag: 'rect',
-      x: x,
-      y: y,
-      width: w,
-      height: h,
-      fill: color,
-   })
-}
-function line(x1, y1, x2, y2, r, color, attrs={}) {
-   return Object.assign(attrs, {
-      tag: 'line',
-      x1: x1,
-      y1: y1,
-      x2: x2,
-      y2: y2,
-      'stroke-width': r,
-      stroke: color,
-   })
-}
-function tspan(color, attrs={}) {
-   return Object.assign(attrs, {
-      tag: 'tspan',
-      fill: color,
-   })
-}
-function create(attrs, parent=null) {
-   const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
-   for (key in attrs) {
-      if (key != "tag") item.setAttribute(key, attrs[key])
-   }
-   (parent == null ? upper_group : parent).appendChild(item);
-   return item;
-}
-
-
-
-const FONT_SIZE = 24
-function sfc32(a, b, c, d) {
-   return function() {
-      a |= 0; b |= 0; c |= 0; d |= 0;
-      let t = (a + b | 0) + d | 0;
-      d = d + 1 | 0;
-      a = b ^ b >>> 9;
-      b = c + (c << 3) | 0;
-      c = (c << 21 | c >>> 11);
-      c = c + t | 0;
-      return (t >>> 0) / 4294967296;
-   }
-}
-function seed_rng(text) {
-   const h = []
-   for (let shft = 3; shft < 7; shft++) {
-      var hash = 0
-      if (text.length == 0) return sfc32(0, 1, 2, 3)
-      for (i = 0; i < text.length; i++) {
-         hash = ((hash << shft) - hash) + text.charCodeAt(i) | 0
-      }
-      h.push(hash)
-   }
-   return sfc32(...h)
-}
-function shuffle(list, rng) {
-   const values = list.slice()
-   const order = []
-   while (values.length > 0) {
-      order.push(values.splice(Math.floor(rng() * values.length), 1)[0])
-   }
-   return order
-}
-function evenly_space(amount, rng, offset=null) {
-   offset = offset == null ? rng() : offset
-   const values = []
-   for (let i = 0; i < amount; i++) {
-      const v = offset + (i/amount)
-      values.push(v > 1.0 ? v - 1.0 : v)
-   }
-   return shuffle(values, rng)
-}
-
-const HUE_START = -80
-const HUE_END   = 220
-function rotate(value, amount) {
-   const sum = value + amount
-   return sum - Math.floor(sum)
-}
-function norm_index(value, range, start=0) {
-   return start + Math.round(rotate((value - start) / range))
-}
-function fill_single_anchor(anchor, amount, rng) {
-   const percs = evenly_space(amount, rng, anchor)
-   const delta = anchor - percs[0]
-   for (i in percs) {
-      percs[i] = rotate(percs[i], delta)
-   }
-   return percs
-}
-function percs_to_hsvs(percs, local=true) {
-   const values = []
-   for (perc of percs) {
-      var hue = HUE_START + perc * (HUE_END - HUE_START)
-      if (hue < 0) hue += 360
-      values.push(`hsl(${Math.round(hue)}deg, 92%, ${local ? 75 : 8}%)`)
-   }
-   return values
-}
-function anchor_to_local_hsvs(anchor, name, amount) {
-   return percs_to_hsvs(fill_single_anchor(anchor, amount, seed_rng(name)))
-}
-function multi_anchor_to_local_hsvs(anchors, name, amount) {
-   var indeces = []
-   for (a of anchors) {
-      indeces.push(Math.floor(a * amount))
-   }
-   const HALF_STEP = 0.5 * (1 / amount)
-   function spread_out() {
-      for (oi in indeces) {
-         for (ii in indeces) {
-            if (oi == ii) continue
-            const ov = indeces[oi]
-            const iv = indeces[ii]
-            if (ov == iv) {
-               const center = ov * amount + HALF_STEP
-               const od = Math.abs(anchors[oi] - center)
-               const id = Math.abs(anchors[ii] - center)
-
-               const has_left  = norm_index(ov - 1, amount) in indeces
-               const has_right = norm_index(ov + 1, amount) in indeces
-               var dir = 0
-               if ( has_left && !has_right) dir =  1
-               if (!has_left &&  has_right) dir = -1
-               if (od > id) {
-                  if (dir == 0) dir = Math.sign(anchors[oi] - anchors[ii])
-                  indeces[oi] = norm_index(indeces[oi] + dir, amount)
-               } else {
-                  if (dir == 0) dir = Math.sign(anchors[ii] - anchors[oi])
-                  indeces[ii] = norm_index(indeces[ii] + dir, amount)
-               }
-               return false
-            }
-         }
-      }
-      return true
-   }
-   var ok
-   while (!ok) {
-      ok = spread_out()
-   }
-
-   const spaces = []
-   for (let i = 0; i < amount; i++) {
-      var found = false
-      for (let j = 0; j < indeces.length; j++) {
-         if (i == indeces[j]) {
-            found = true
-            break
-         }
-      }
-      if (!found) {
-         spaces.push(i)
-      }
-   }
-   const percs = []
-   for (a of anchors) {
-      percs.push(a)
-   }
-   const order = shuffle(spaces, seed_rng(name))
-   for (o of order) {
-      percs.push(o / amount + HALF_STEP)
-   }
-
-   const values = []
-   for (perc of percs) {
-      var hue = HUE_START + perc * (HUE_END - HUE_START)
-      if (hue < 0) hue += 360
-      values.push(`hsl(${Math.round(hue)}deg, 92%, 75%)`)
-   }
-   return values
-}
-function parse_parent(global_name) {
-   return global_name.split(".")[0]
-}
-
-
-
-
-
-
-var first_time = []
-var curr_vals = {}
-var stat_subs = {}
-function add_sub(key, value) {
-   if ( !(key in stat_subs) ) {
-      stat_subs[key] = []
-   }
-   stat_subs[key].push(value)
-}
-
-/*************************/
-/***  Slider Elements  ***/
-/*************************/
-function __create_slider(cx, cy, width, min, max, color, value) {
-   const SLIDER_RADIUS = 4
-   const SLIDER_COLOR  = "#181818"
-   const KNOB_RADIUS   = 15
-   const KNOB_COLOR    = "#404040"
-
-   const lx = cx-width/2
-   const rx = cx+width/2
-   create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR))
-   create(circle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR))
-   create(circle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR))
-
-   const vx = lx + (rx - lx) * ((value - min) / (max - min))
-
-   const g = create(group(0, 0))
-   const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
-   const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
-   g.onmousedown = () => (selected_slider = g)
-   g.min = min
-   g.range = (max-min)
-   g.lx = lx
-   g.dx = (rx-lx)
-   g.knobs = [knob_outer, knob_inner]
-   return g
-}
-
-/*************************/
-/***   Text Elements   ***/
-/*************************/
-const pointer_data = []
-function __create_text_elements(text, x, y, font_size, color, parent_name) {
-   const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-   text_element.setAttribute('x', x);
-   text_element.setAttribute('y', y);
-   text_element.setAttribute('text-anchor', 'middle');
-   text_element.setAttribute('dominant-baseline', 'middle');
-   text_element.setAttribute('font-size', font_size);
-   text_element.setAttribute('class', 'svg_text')
-   canvas.appendChild(text_element);
-
-   var original = text
-   var in_section = false
-   while (text.length > 0) {
-      if (in_section) {
-         var index = text.indexOf("}")
-         if (index < 0) {
-            console.error(`unmatched brackets: '${original}'`)
-            return null
-         }
-         var id = text.slice(0, index)
-         const fmt_index = id.indexOf(":")
-         var fmt_func = (v) => (v)
-         if (fmt_index > 0) {
-            const fmt_str = id.slice(fmt_index+1)
-            if (fmt_str.length != 1) {
-               console.error(`Expect exactly 1 format character, got '${fmt_str}' from '${id}'`)
-               return null
-            }
-            const amnt = parseInt(fmt_str, 10)
-            fmt_func = (v) => (v.toFixed(amnt))
-            id = id.slice(0, fmt_index)
-         }
-
-         if (id.indexOf(".") < 0) {
-            id = `${parent_name}.${id}`
-         } else {
-            const other_name = parse_parent(id)
-            if (other_name != parent_name) {
-               pointer_data.push({
-                  src: parent_name,
-                  dst: other_name,
-                  key: id,
-               })
-            }
-         }
-         const key = id
-         const t = create(tspan(color), text_element)
-         t.textContent = `[${key}]`
-         const frozen_fmt_func = fmt_func
-         function update_text() {
-            const value = curr_vals[key]
-            if (value === null || value === undefined) {
-               return
-            }
-            t.textContent = frozen_fmt_func(value)
-         }
-         add_sub(key, update_text)
-         first_time.push(() => t.setAttribute('fill', local_colors[key]))
-         first_time.push(update_text)
-
-         text = text.slice(index + 1)
-         in_section = false
-      } else {
-         var index = text.indexOf("${")
-         var chunk = index < 0 ? text : text.slice(0, index)
-         const t = create(tspan(color), text_element)
-         t.textContent = chunk
-         text = index < 0 ? "" : text.slice(index + 2)
-         in_section = true
+   for (let i = 0; i < TAB_COUNT; i++) {
+      if (i == tab_i) {
+         tabs[i].on_show()
+      } else if (tabs[i] != null) {
+         tabs[i].on_hide()
       }
    }
 }
 
-/************************/
-/***    Stats Page    ***/
-/************************/
-const parent_centers = {}
-const parent_colors = {}
-const local_colors = {}
-function __create_stats_page(x, y, width, rows, parent_name, parent_color) {
-   const SECTION_HEIGHT = 34
-   var usable_width = width * 0.75
-   const background = create(rectangle(x, y, width, 0, '#060606'))
-   const cx = x + width/2
-   const BUFFER = 0.3 * SECTION_HEIGHT
-   parent_colors[parent_name] = parent_color
+const template = document.getElementById('canvas-template');
+function create_tab(tab_i) {
 
-   function update_data(key, value) {
-      if (value === null || value === undefined) {
-         console.error(`Got null value for key '${key}'`)
+   if (tabs[tab_i] != null) {
+      throw Error(`Tried to create_tab on an existing index ${tab_i}`)
+   }
+
+   // Get the SVG canvas
+   const canvas = template.cloneNode(true);
+   canvas.setAttribute('class', '')
+   template.parentNode.appendChild(canvas)
+   const lower_group = canvas.getElementById('lower-group');
+   const upper_group = canvas.getElementById('upper-group');
+
+   var selected_slider = null
+   function global_on_mouse_move(e) {
+      if (selected_slider == null) {
          return
       }
-      curr_vals[key] = value
-      if (key in stat_subs) {
-         for (sub of stat_subs[key]) {
-            sub()
+      if (!e.buttons) {
+         selected_slider = null
+         return
+      }
+      const g = selected_slider
+      const CTM = canvas.getScreenCTM();
+      const mouse_x = (e.clientX - CTM.e) / CTM.a
+      const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
+      const index = Math.floor(perc * g.range + 0.5)
+      const cx = g.lx + g.dx * (index / g.range)
+      for (knob of g.knobs) {
+         knob.setAttribute("cx", cx)
+      }
+      g.update_data(index + g.min)
+   }
+
+
+   /************************/
+   /***    Common Lib    ***/
+   /************************/
+   function loadImage(x, y, href) {
+      const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      image.setAttribute('x', x);
+      image.setAttribute('y', y);
+      image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+      canvas.appendChild(image);
+      return image;
+   }
+   function group(x, y, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'g',
+         x: x,
+         y: y,
+      })
+   }
+   function circle(cx, cy, r, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'circle',
+         cx: cx,
+         cy: cy,
+         r: r,
+         fill: color,
+      })
+   }
+   function rectangle(x, y, w, h, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'rect',
+         x: x,
+         y: y,
+         width: w,
+         height: h,
+         fill: color,
+      })
+   }
+   function line(x1, y1, x2, y2, r, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'line',
+         x1: x1,
+         y1: y1,
+         x2: x2,
+         y2: y2,
+         'stroke-width': r,
+         stroke: color,
+      })
+   }
+   function tspan(color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'tspan',
+         fill: color,
+      })
+   }
+   function create(attrs, parent=null) {
+      const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
+      for (key in attrs) {
+         if (key != "tag") item.setAttribute(key, attrs[key])
+      }
+      (parent == null ? upper_group : parent).appendChild(item);
+      return item;
+   }
+
+   const FONT_SIZE = 24
+   function sfc32(a, b, c, d) {
+      return function() {
+         a |= 0; b |= 0; c |= 0; d |= 0;
+         let t = (a + b | 0) + d | 0;
+         d = d + 1 | 0;
+         a = b ^ b >>> 9;
+         b = c + (c << 3) | 0;
+         c = (c << 21 | c >>> 11);
+         c = c + t | 0;
+         return (t >>> 0) / 4294967296;
+      }
+   }
+   function seed_rng(text) {
+      const h = []
+      for (let shft = 3; shft < 7; shft++) {
+         var hash = 0
+         if (text.length == 0) return sfc32(0, 1, 2, 3)
+         for (i = 0; i < text.length; i++) {
+            hash = ((hash << shft) - hash) + text.charCodeAt(i) | 0
+         }
+         h.push(hash)
+      }
+      return sfc32(...h)
+   }
+   function shuffle(list, rng) {
+      const values = list.slice()
+      const order = []
+      while (values.length > 0) {
+         order.push(values.splice(Math.floor(rng() * values.length), 1)[0])
+      }
+      return order
+   }
+   function evenly_space(amount, rng, offset=null) {
+      offset = offset == null ? rng() : offset
+      const values = []
+      for (let i = 0; i < amount; i++) {
+         const v = offset + (i/amount)
+         values.push(v > 1.0 ? v - 1.0 : v)
+      }
+      return shuffle(values, rng)
+   }
+
+   const HUE_START = -80
+   const HUE_END   = 220
+   function rotate(value, amount) {
+      const sum = value + amount
+      return sum - Math.floor(sum)
+   }
+   function norm_index(value, range, start=0) {
+      return start + Math.round(rotate((value - start) / range))
+   }
+   function fill_single_anchor(anchor, amount, rng) {
+      const percs = evenly_space(amount, rng, anchor)
+      const delta = anchor - percs[0]
+      for (i in percs) {
+         percs[i] = rotate(percs[i], delta)
+      }
+      return percs
+   }
+   function percs_to_hsvs(percs, local=true) {
+      const values = []
+      for (perc of percs) {
+         var hue = HUE_START + perc * (HUE_END - HUE_START)
+         if (hue < 0) hue += 360
+         values.push(`hsl(${Math.round(hue)}deg, 92%, ${local ? 75 : 8}%)`)
+      }
+      return values
+   }
+   function anchor_to_local_hsvs(anchor, name, amount) {
+      return percs_to_hsvs(fill_single_anchor(anchor, amount, seed_rng(name)))
+   }
+   function multi_anchor_to_local_hsvs(anchors, name, amount) {
+      var indeces = []
+      for (a of anchors) {
+         indeces.push(Math.floor(a * amount))
+      }
+      const HALF_STEP = 0.5 * (1 / amount)
+      function spread_out() {
+         for (oi in indeces) {
+            for (ii in indeces) {
+               if (oi == ii) continue
+               const ov = indeces[oi]
+               const iv = indeces[ii]
+               if (ov == iv) {
+                  const center = ov * amount + HALF_STEP
+                  const od = Math.abs(anchors[oi] - center)
+                  const id = Math.abs(anchors[ii] - center)
+
+                  const has_left  = norm_index(ov - 1, amount) in indeces
+                  const has_right = norm_index(ov + 1, amount) in indeces
+                  var dir = 0
+                  if ( has_left && !has_right) dir =  1
+                  if (!has_left &&  has_right) dir = -1
+                  if (od > id) {
+                     if (dir == 0) dir = Math.sign(anchors[oi] - anchors[ii])
+                     indeces[oi] = norm_index(indeces[oi] + dir, amount)
+                  } else {
+                     if (dir == 0) dir = Math.sign(anchors[ii] - anchors[oi])
+                     indeces[ii] = norm_index(indeces[ii] + dir, amount)
+                  }
+                  return false
+               }
+            }
+         }
+         return true
+      }
+      var ok
+      while (!ok) {
+         ok = spread_out()
+      }
+
+      const spaces = []
+      for (let i = 0; i < amount; i++) {
+         var found = false
+         for (let j = 0; j < indeces.length; j++) {
+            if (i == indeces[j]) {
+               found = true
+               break
+            }
+         }
+         if (!found) {
+            spaces.push(i)
+         }
+      }
+      const percs = []
+      for (a of anchors) {
+         percs.push(a)
+      }
+      const order = shuffle(spaces, seed_rng(name))
+      for (o of order) {
+         percs.push(o / amount + HALF_STEP)
+      }
+
+      const values = []
+      for (perc of percs) {
+         var hue = HUE_START + perc * (HUE_END - HUE_START)
+         if (hue < 0) hue += 360
+         values.push(`hsl(${Math.round(hue)}deg, 92%, 75%)`)
+      }
+      return values
+   }
+   function parse_parent(global_name) {
+      return global_name.split(".")[0]
+   }
+
+   var first_time = []
+   var curr_vals = {}
+   var stat_subs = {}
+   function add_sub(key, value) {
+      if ( !(key in stat_subs) ) {
+         stat_subs[key] = []
+      }
+      stat_subs[key].push(value)
+   }
+
+   /*************************/
+   /***  Slider Elements  ***/
+   /*************************/
+   function __create_slider(cx, cy, width, min, max, color, value) {
+      const SLIDER_RADIUS = 4
+      const SLIDER_COLOR  = "#181818"
+      const KNOB_RADIUS   = 15
+      const KNOB_COLOR    = "#404040"
+
+      const lx = cx-width/2
+      const rx = cx+width/2
+      create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR))
+      create(circle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR))
+      create(circle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR))
+
+      const vx = lx + (rx - lx) * ((value - min) / (max - min))
+
+      const g = create(group(0, 0))
+      const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
+      const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
+      g.onmousedown = () => (selected_slider = g)
+      g.min = min
+      g.range = (max-min)
+      g.lx = lx
+      g.dx = (rx-lx)
+      g.knobs = [knob_outer, knob_inner]
+      return g
+   }
+
+   /*************************/
+   /***   Text Elements   ***/
+   /*************************/
+   const pointer_data = []
+   function __create_text_elements(text, x, y, font_size, color, parent_name) {
+      const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text_element.setAttribute('x', x);
+      text_element.setAttribute('y', y);
+      text_element.setAttribute('text-anchor', 'middle');
+      text_element.setAttribute('dominant-baseline', 'middle');
+      text_element.setAttribute('font-size', font_size);
+      text_element.setAttribute('class', 'svg_text')
+      canvas.appendChild(text_element);
+
+      var original = text
+      var in_section = false
+      while (text.length > 0) {
+         if (in_section) {
+            var index = text.indexOf("}")
+            if (index < 0) {
+               console.error(`unmatched brackets: '${original}'`)
+               return null
+            }
+            var id = text.slice(0, index)
+            const fmt_index = id.indexOf(":")
+            var fmt_func = (v) => (v)
+            if (fmt_index > 0) {
+               const fmt_str = id.slice(fmt_index+1)
+               if (fmt_str.length != 1) {
+                  console.error(`Expect exactly 1 format character, got '${fmt_str}' from '${id}'`)
+                  return null
+               }
+               const amnt = parseInt(fmt_str, 10)
+               fmt_func = (v) => (v.toFixed(amnt))
+               id = id.slice(0, fmt_index)
+            }
+
+            if (id.indexOf(".") < 0) {
+               id = `${parent_name}.${id}`
+            } else {
+               const other_name = parse_parent(id)
+               if (other_name != parent_name) {
+                  pointer_data.push({
+                     src: parent_name,
+                     dst: other_name,
+                     key: id,
+                  })
+               }
+            }
+            const key = id
+            const t = create(tspan(color), text_element)
+            t.textContent = `[${key}]`
+            const frozen_fmt_func = fmt_func
+            function update_text() {
+               const value = curr_vals[key]
+               if (value === null || value === undefined) {
+                  return
+               }
+               t.textContent = frozen_fmt_func(value)
+            }
+            add_sub(key, update_text)
+            first_time.push(() => t.setAttribute('fill', local_colors[key]))
+            first_time.push(update_text)
+
+            text = text.slice(index + 1)
+            in_section = false
+         } else {
+            var index = text.indexOf("${")
+            var chunk = index < 0 ? text : text.slice(0, index)
+            const t = create(tspan(color), text_element)
+            t.textContent = chunk
+            text = index < 0 ? "" : text.slice(index + 2)
+            in_section = true
          }
       }
    }
 
-   var curr_y = y + BUFFER + SECTION_HEIGHT
-   for (row of rows) {
-      const row_id = `${parent_name}.${row.id}`
-      if (row.type == "text") {
-         __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, parent_name)
-      } else if (row.type == "slider") {
-         const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
-         g.update_data = (v) => update_data(row_id, v)
-         curr_vals[row_id] = row.default
-         local_colors[row_id] = row.color
-      } else if (row.type == "calc") {
-         const from_ids = row.from
-         const from_keys = []
-         for (id of from_ids) {
-            from_keys.push(id.indexOf(".") < 0 ? `${parent_name}.${id}` : id)
-         }
+   /************************/
+   /***    Stats Page    ***/
+   /************************/
+   const parent_centers = {}
+   const parent_colors = {}
+   const local_colors = {}
+   function __create_stats_page(x, y, width, rows, parent_name, parent_color) {
+      const SECTION_HEIGHT = 34
+      var usable_width = width * 0.75
+      const background = create(rectangle(x, y, width, 0, '#060606'))
+      const cx = x + width/2
+      const BUFFER = 0.3 * SECTION_HEIGHT
+      parent_colors[parent_name] = parent_color
 
-         const func = row.func
-         const color =
-            "color" in row
-               ? row.color
-               : from_keys.length == 1
-                  ? local_colors[from_keys[0]]
-                  : null
-         if (color == null) {
-            print(local_colors)
-            print(from_keys)
-            console.error(`could not determine color for calc '${row_id}'`)
+      function update_data(key, value) {
+         if (value === null || value === undefined) {
+            console.error(`Got null value for key '${key}'`)
+            return
+         }
+         curr_vals[key] = value
+         if (key in stat_subs) {
+            for (sub of stat_subs[key]) {
+               sub()
+            }
+         }
+      }
+
+      var curr_y = y + BUFFER + SECTION_HEIGHT
+      for (row of rows) {
+         const row_id = `${parent_name}.${row.id}`
+         if (row.type == "text") {
+            __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, parent_name)
+         } else if (row.type == "slider") {
+            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
+            g.update_data = (v) => update_data(row_id, v)
+            curr_vals[row_id] = row.default
+            local_colors[row_id] = row.color
+         } else if (row.type == "calc") {
+            const from_ids = row.from
+            const from_keys = []
+            for (id of from_ids) {
+               from_keys.push(id.indexOf(".") < 0 ? `${parent_name}.${id}` : id)
+            }
+
+            const func = row.func
+            const color =
+               "color" in row
+                  ? row.color
+                  : from_keys.length == 1
+                     ? local_colors[from_keys[0]]
+                     : null
+            if (color == null) {
+               print(local_colors)
+               print(from_keys)
+               console.error(`could not determine color for calc '${row_id}'`)
+               continue
+            }
+            local_colors[row_id] = color
+
+            function update_calc() {
+               const params = []
+               for (key of from_keys) {
+                  params.push(curr_vals[key])
+               }
+               const new_value = func(...params)
+               if (new_value == null) {
+                  console.error(`got null result from ${row_id}, params=${params}`)
+               } else {
+                  update_data(row_id, new_value)
+               }
+            }
+            for (key of from_keys) {
+               add_sub(key, update_calc)
+               const other_name = parse_parent(key)
+               if (other_name != parent_name) {
+                  pointer_data.push({
+                     src: parent_name,
+                     dst: other_name,
+                     key: id,
+                     from: key,
+                  })
+               }
+            }
+            curr_y -= SECTION_HEIGHT
+         } else if (row.type == "gap") {
+            // pass
+         } else {
+            console.error(`got invalid row['type'] value '${row.type}'`)
+         }
+         curr_y += SECTION_HEIGHT
+      }
+
+      const height = (curr_y + BUFFER) - y
+      background.setAttribute('height', height)
+      parent_centers[parent_name] = { x:cx, y:y+height/2 }
+      return height
+   }
+
+   function add_section(name, color, icon, x, y, img_width, img_height, stats_width, rows) {
+      BORDER_SIZE = 0
+      // create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
+      // const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
+      loadImage(x, y, icon)
+      var height = __create_stats_page(x+img_width+BORDER_SIZE, y, stats_width, rows, name, color)
+      // r.setAttribute('height', height + 2*BORDER_SIZE)
+   }
+
+
+   const GRAY_TEXT = "#696969"
+   const PURP_TEXT = "#7171da"
+
+
+   if (tab_i == 0) {
+
+      /*************************/
+      /***   ENERGY SHIELD   ***/
+      /*************************/
+
+      var section_i = 0
+      const sections = evenly_space(7, seed_rng("1337"))
+      const global_colors = percs_to_hsvs(sections, false)
+
+      var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
+      function pop_color() {
+         const x = colors.slice(0,1)[0]
+         colors = colors.slice(1)
+         return x
+      }
+      var primary = pop_color()
+      add_section(
+         "chestpiece",
+         global_colors[section_i],
+         "./energy_shield/chestpiece.png",
+         60,
+         150,
+         227,
+         332,
+         380,
+         [
+            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
+            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
+
+            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
+            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
+
+            { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
+            { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
+
+            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
+            { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
+
+            { type:"gap" },
+
+            { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
+
+            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+            { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+            { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+         ]
+      )
+      section_i += 1
+
+      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
+      var primaries = [pop_color(), pop_color()]
+      add_section(
+         "helmet",
+         global_colors[section_i+1],
+         "./energy_shield/helmet.png",
+         720,
+         60,
+         206,
+         231,
+         410,
+         [
+            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
+            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
+
+            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
+            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
+
+            { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
+            { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:primaries[0] },
+
+            { type:"gap" },
+
+            { type:"text", color:GRAY_TEXT, value:"[ ${base_value} * ${quality_f:2} ]" },
+            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
+
+            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+            { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+         ]
+      )
+      section_i += 2
+
+      colors = anchor_to_local_hsvs(sections[section_i], "int", 2)
+      primary = pop_color()
+      add_section(
+         "int",
+         global_colors[section_i],
+         "./energy_shield/int.png",
+         1410,
+         300,
+         34,
+         34,
+         430,
+         [
+            { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
+            { type:"slider", id:"amount", min:0, max:1000, default:491, color:pop_color() },
+
+            { type:"gap" },
+
+            { type:"text", color:GRAY_TEXT, value:"[ ${amount} / 10 * 2 ]" },
+            { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
+
+            { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+         ]
+      )
+      section_i += 1
+
+      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "hacks", 2)
+      primaries = [pop_color(), pop_color()]
+      add_section(
+         "hacks",
+         global_colors[section_i],
+         "",
+         1500,
+         620,
+         2,
+         2,
+         460,
+         [
+            { type:"text", color:GRAY_TEXT, value:"${perc_incr_c}% Increased Max Energy Shield" },
+            { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:primaries[0] },
+
+            { type:"text", color:GRAY_TEXT, value:"${more_c}% More Max Energy Shield" },
+            { type:"slider", id:"more", min:0, max:1, default:0, color:primaries[1] },
+
+            { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
+            { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
+         ]
+      )
+      section_i += 2
+
+      colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
+      primary = pop_color()
+      add_section(
+         "character",
+         global_colors[section_i],
+         "./energy_shield/witch.png",
+         550,
+         650,
+         201,
+         264,
+         600,
+         [
+            { type:"text", color:GRAY_TEXT, value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
+            { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
+
+            { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
+            { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
+            { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
+            { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"], func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm) },
+         ]
+      )
+      section_i += 1
+   
+   } else if (tab_i == 1) {
+
+      /*************************/
+      /***   ENERGY SHIELD   ***/
+      /*************************/
+
+      var section_i = 0
+      const sections = evenly_space(1, seed_rng("1337"))
+      const global_colors = percs_to_hsvs(sections, false)
+
+      var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
+      function pop_color() {
+         const x = colors.slice(0,1)[0]
+         colors = colors.slice(1)
+         return x
+      }
+      var primary = pop_color()
+      add_section(
+         "chestpiece",
+         global_colors[section_i],
+         "./energy_shield/chestpiece.png",
+         60,
+         150,
+         227,
+         332,
+         380,
+         [
+            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
+            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
+
+            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
+            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
+
+            { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
+            { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
+
+            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
+            { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
+
+            { type:"gap" },
+
+            { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
+
+            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+            { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+            { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+         ]
+      )
+      section_i += 1
+
+
+   } else {
+      throw Error(`Do not have support for creating tab_i of '${tab_i}'`)
+   }
+
+
+   for (func of first_time) {
+      func()
+   }
+   for (key in stat_subs) {
+      for (sub of stat_subs[key]) {
+         sub()
+      }
+   }
+   for (i1 in pointer_data) {
+      const LINE_WIDTH = 2
+      const data1 = pointer_data[i1]
+      const like = [data1]
+      var use = true
+      for (i2 in pointer_data) {
+         if (i1 == i2) {
             continue
          }
-         local_colors[row_id] = color
 
-         function update_calc() {
-            const params = []
-            for (key of from_keys) {
-               params.push(curr_vals[key])
-            }
-            const new_value = func(...params)
-            if (new_value == null) {
-               console.error(`got null result from ${row_id}, params=${params}`)
+         const data2 = pointer_data[i2]
+         if (data1.src == data2.src && data1.dst == data2.dst) {
+            if (i2 < i1) {
+               use = false
+               break
             } else {
-               update_data(row_id, new_value)
+               like.push(data2)
             }
          }
-         for (key of from_keys) {
-            add_sub(key, update_calc)
-            const other_name = parse_parent(key)
-            if (other_name != parent_name) {
-               pointer_data.push({
-                  src: parent_name,
-                  dst: other_name,
-                  key: id,
-                  from: key,
-               })
+      }
+      if (use) {
+         const full = []
+         for (let i = 0; i < like.length; i++) {
+            if (like[i].key in local_colors) {
+               full.push(like[i])
             }
          }
-         curr_y -= SECTION_HEIGHT
-      } else if (row.type == "gap") {
-         // pass
-      } else {
-         console.error(`got invalid row['type'] value '${row.type}'`)
-      }
-      curr_y += SECTION_HEIGHT
-   }
-
-   const height = (curr_y + BUFFER) - y
-   background.setAttribute('height', height)
-   parent_centers[parent_name] = { x:cx, y:y+height/2 }
-   return height
-}
-
-function add_section(name, color, icon, x, y, img_width, img_height, stats_width, rows) {
-   BORDER_SIZE = 0
-   // create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
-   // const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
-   loadImage(x, y, icon)
-   var height = __create_stats_page(x+img_width+BORDER_SIZE, y, stats_width, rows, name, color)
-   // r.setAttribute('height', height + 2*BORDER_SIZE)
-}
-
-
-
-
-
-const GRAY_TEXT = "#696969"
-const PURP_TEXT = "#7171da"
-
-
-
-
-
-var section_i = 0
-const sections = evenly_space(7, seed_rng("1337"))
-const global_colors = percs_to_hsvs(sections, false)
-
-var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
-function pop_color() {
-   const x = colors.slice(0,1)[0]
-   colors = colors.slice(1)
-   return x
-}
-var primary = pop_color()
-add_section(
-   "chestpiece",
-   global_colors[section_i],
-   "./energy_shield/chestpiece.png",
-   60,
-   150,
-   227,
-   332,
-   380,
-   [
-      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-      { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
-      { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
-
-      { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
-      { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
-
-      { type:"gap" },
-
-      { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
-      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
-
-      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
-   ]
-)
-section_i += 1
-
-colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
-var primaries = [pop_color(), pop_color()]
-add_section(
-   "helmet",
-   global_colors[section_i+1],
-   "./energy_shield/helmet.png",
-   720,
-   60,
-   206,
-   231,
-   410,
-   [
-      { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-      { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-      { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-      { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-      { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
-      { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:primaries[0] },
-
-      { type:"gap" },
-
-      { type:"text", color:GRAY_TEXT, value:"[ ${base_value} * ${quality_f:2} ]" },
-      { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
-
-      { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-      { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
-   ]
-)
-section_i += 2
-
-colors = anchor_to_local_hsvs(sections[section_i], "int", 2)
-primary = pop_color()
-add_section(
-   "int",
-   global_colors[section_i],
-   "./energy_shield/int.png",
-   1410,
-   300,
-   34,
-   34,
-   430,
-   [
-      { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
-      { type:"slider", id:"amount", min:0, max:1000, default:491, color:pop_color() },
-
-      { type:"gap" },
-
-      { type:"text", color:GRAY_TEXT, value:"[ ${amount} / 10 * 2 ]" },
-      { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
-
-      { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
-   ]
-)
-section_i += 1
-
-colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "hacks", 2)
-primaries = [pop_color(), pop_color()]
-add_section(
-   "hacks",
-   global_colors[section_i],
-   "",
-   1500,
-   620,
-   2,
-   2,
-   460,
-   [
-      { type:"text", color:GRAY_TEXT, value:"${perc_incr_c}% Increased Max Energy Shield" },
-      { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:primaries[0] },
-
-      { type:"text", color:GRAY_TEXT, value:"${more_c}% More Max Energy Shield" },
-      { type:"slider", id:"more", min:0, max:1, default:0, color:primaries[1] },
-
-      { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
-      { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
-   ]
-)
-section_i += 2
-
-colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
-primary = pop_color()
-add_section(
-   "character",
-   global_colors[section_i],
-   "./energy_shield/witch.png",
-   550,
-   650,
-   201,
-   264,
-   600,
-   [
-      { type:"text", color:GRAY_TEXT, value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
-      { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
-
-      { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
-      { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
-      { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
-      { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"], func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm) },
-   ]
-)
-section_i += 1
-
-
-for (func of first_time) {
-   func()
-}
-for (key in stat_subs) {
-   for (sub of stat_subs[key]) {
-      sub()
-   }
-}
-for (i1 in pointer_data) {
-   const LINE_WIDTH = 2
-   const data1 = pointer_data[i1]
-   const like = [data1]
-   var use = true
-   for (i2 in pointer_data) {
-      if (i1 == i2) {
-         continue
-      }
-
-      const data2 = pointer_data[i2]
-      if (data1.src == data2.src && data1.dst == data2.dst) {
-         if (i2 < i1) {
-            use = false
-            break
+         if (full.length == 1) {
+            const d  = full[0]
+            const p1 = parent_centers[d.src]
+            const p2 = parent_centers[d.dst]
+            const c  = local_colors[d.key]
+            create(line(p1.x, p1.y, p2.x, p2.y, LINE_WIDTH, c), lower_group)
          } else {
-            like.push(data2)
+            const SEP_DIST = 24
+            const d  = like[0]
+            const p1 = parent_centers[d.src]
+            const p2 = parent_centers[d.dst]
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
+            const vec_x = Math.cos(angle)
+            const vec_y = Math.sin(angle)
+            for (let i = 0; i < full.length; i++) {
+               const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
+               const dx = vec_x * scale
+               const dy = vec_y * scale
+               const c = local_colors[full[i].key]
+               create(line(p1.x, p1.y, p2.x+dx, p2.y+dy, LINE_WIDTH, c), lower_group)
+            }
          }
       }
    }
-   if (use) {
-      const full = []
-      for (let i = 0; i < like.length; i++) {
-         if (like[i].key in local_colors) {
-            full.push(like[i])
-         }
-      }
-      if (full.length == 1) {
-         const d  = full[0]
-         const p1 = parent_centers[d.src]
-         const p2 = parent_centers[d.dst]
-         const c  = local_colors[d.key]
-         create(line(p1.x, p1.y, p2.x, p2.y, LINE_WIDTH, c), lower_group)
-      } else {
-         const SEP_DIST = 24
-         const d  = like[0]
-         const p1 = parent_centers[d.src]
-         const p2 = parent_centers[d.dst]
-         const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
-         const vec_x = Math.cos(angle)
-         const vec_y = Math.sin(angle)
-         for (let i = 0; i < full.length; i++) {
-            const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
-            const dx = vec_x * scale
-            const dy = vec_y * scale
-            const c = local_colors[full[i].key]
-            create(line(p1.x, p1.y, p2.x+dx, p2.y+dy, LINE_WIDTH, c), lower_group)
-         }
-      }
+
+   tabs[tab_i] = {
+      canvas: canvas,
+      on_show: function() {
+         canvas.setAttribute('class', '')
+         canvas.addEventListener('mousemove', global_on_mouse_move);
+      },
+      on_hide: function() {
+         canvas.setAttribute('class', 'hidden')
+         canvas.removeEventListener('mousemove', global_on_mouse_move);
+      },
    }
 }
 
-
-
-
-
-
-
+select_tab(DEFAULT_TAB)
 
 
    </script>
