@@ -733,7 +733,7 @@ function create_tab(tab_i) {
       /************************/
 
       var section_i = 0
-      const sections = evenly_space(4, seed_rng("1337"))
+      const sections = evenly_space(5, seed_rng("1337"))
       const global_colors = percs_to_hsvs(sections, false)
 
       var colors = anchor_to_local_hsvs(sections[section_i], "axe", 6)
@@ -768,11 +768,11 @@ function create_tab(tab_i) {
             { type:"gap" },
 
             { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
-            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
+            { type:"text", color:GRAY_TEXT, value:"Item Physical Damage: ${phys_damage}" },
 
             { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
             { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+            { type:"calc", id:"phys_damage", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
          ]
       )
       section_i += 1
@@ -789,8 +789,8 @@ function create_tab(tab_i) {
          34,
          480,
          [
-            { type:"text", color:GRAY_TEXT, value:"Adds ${flat_add} Physical Damage to Attacks" },
-            { type:"slider", id:"flat_add", min:4, max:24, default:16, color:primary },
+            { type:"text", color:GRAY_TEXT, value:"Adds ${phys_damage} Physical Damage to Attacks" },
+            { type:"slider", id:"phys_damage", min:4, max:24, default:16, color:primary },
          ]
       )
       section_i += 1
@@ -808,18 +808,38 @@ function create_tab(tab_i) {
          800,
          [
             { type:"text", color:GRAY_TEXT, value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
-            { type:"slider", id:"perc_incr_1", min:0, max:6, default:4, color:primaries[0] },
+            { type:"slider", id:"perc_incr_1", min:0, max:6, default:2, color:primaries[0] },
 
             { type:"text", color:GRAY_TEXT, value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
-            { type:"slider", id:"perc_incr_2", min:0, max:6, default:3, color:primaries[1] },
+            { type:"slider", id:"perc_incr_2", min:0, max:6, default:4, color:primaries[1] },
 
             { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
             { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
-            { type:"calc", id:"perc_incr_1_f", from:["perc_incr_1_c"], func:(p)=>(Math.round(p/100.0)) },
-            { type:"calc", id:"perc_incr_2_f", from:["perc_incr_2_c"], func:(p)=>(Math.round(p/100.0)) },
          ]
       )
       section_i += 2
+
+      colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
+      primary = pop_color()
+      add_section(
+         "character",
+         global_colors[section_i],
+         "",
+         550,
+         650,
+         201,
+         264,
+         450,
+         [
+            { type:"text", color:GRAY_TEXT, value:"[ (${axe.phys_damage} + ${amulet.phys_damage}) * (1.0 + ${passives_perc_incr_1_f:2} + ${passives_perc_incr_2_f:2}) ]" },
+            { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
+
+            { type:"calc", id:"passives_perc_incr_1_f", from:["passives.perc_incr_1_c"], func:(p)=>(p/100.0) },
+            { type:"calc", id:"passives_perc_incr_2_f", from:["passives.perc_incr_2_c"], func:(p)=>(p/100.0) },
+            { type:"calc", id:"energy_shield", color:primary, from:["axe.phys_damage","amulet.phys_damage","passives_perc_incr_1_f","passives_perc_incr_2_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+         ]
+      )
+      section_i += 1
 
 
    } else {
@@ -859,9 +879,19 @@ function create_tab(tab_i) {
          const full = []
          for (let i = 0; i < like.length; i++) {
             if (like[i].key in local_colors) {
-               full.push(like[i])
+               var add = true
+               for (e of full) {
+                  if (like[i].key == e.key) {
+                     add =- false
+                     break
+                  }
+               }
+               if (add) {
+                  full.push(like[i])
+               }
             }
          }
+         print(full)
          if (full.length == 1) {
             const d  = full[0]
             const p1 = parent_centers[d.src]
@@ -870,7 +900,7 @@ function create_tab(tab_i) {
             create(line(p1.x, p1.y, p2.x, p2.y, LINE_WIDTH, c), lower_group)
          } else {
             const SEP_DIST = 24
-            const d  = like[0]
+            const d  = full[0]
             const p1 = parent_centers[d.src]
             const p2 = parent_centers[d.dst]
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
