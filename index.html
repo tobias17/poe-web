@@ -78,7 +78,7 @@ const tab_names = [
    "energy_shield",
    "melee_attack",
 ]
-DEFAULT_TAB = 0
+DEFAULT_TAB = 1
 
 const TAB_COUNT = 2
 const tabs = []
@@ -728,15 +728,15 @@ function create_tab(tab_i) {
    
    } else if (tab_i == 1) {
 
-      /*************************/
-      /***   ENERGY SHIELD   ***/
-      /*************************/
+      /************************/
+      /***   MELEE ATTACK   ***/
+      /************************/
 
       var section_i = 0
-      const sections = evenly_space(1, seed_rng("1337"))
+      const sections = evenly_space(4, seed_rng("1337"))
       const global_colors = percs_to_hsvs(sections, false)
 
-      var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
+      var colors = anchor_to_local_hsvs(sections[section_i], "axe", 6)
       function pop_color() {
          const x = colors.slice(0,1)[0]
          colors = colors.slice(1)
@@ -744,25 +744,25 @@ function create_tab(tab_i) {
       }
       var primary = pop_color()
       add_section(
-         "chestpiece",
+         "axe",
          global_colors[section_i],
-         "./energy_shield/chestpiece.png",
-         60,
-         150,
-         227,
+         "./melee_attack/axe.png",
+         70,
+         280,
+         165,
          332,
-         380,
+         400,
          [
             { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
             { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
 
-            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
+            { type:"text", color:GRAY_TEXT, value:"Base Physical Damage: ${base_value}" },
             { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
 
-            { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
+            { type:"text", color:PURP_TEXT, value:"Adds ${flat_add} Physical Damage" },
             { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
 
-            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
+            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Physical Damage" },
             { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
 
             { type:"gap" },
@@ -776,6 +776,50 @@ function create_tab(tab_i) {
          ]
       )
       section_i += 1
+
+      colors = anchor_to_local_hsvs(sections[section_i], "amulet", 1)
+      primary = pop_color()
+      add_section(
+         "amulet",
+         global_colors[section_i],
+         "./melee_attack/amulet.png",
+         1200,
+         400,
+         134,
+         34,
+         480,
+         [
+            { type:"text", color:GRAY_TEXT, value:"Adds ${flat_add} Physical Damage to Attacks" },
+            { type:"slider", id:"flat_add", min:4, max:24, default:16, color:primary },
+         ]
+      )
+      section_i += 1
+
+      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "passives", 2)
+      var primaries = [pop_color(), pop_color()]
+      add_section(
+         "passives",
+         global_colors[section_i+1],
+         "./melee_attack/passives.png",
+         350,
+         30,
+         88,
+         231,
+         800,
+         [
+            { type:"text", color:GRAY_TEXT, value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
+            { type:"slider", id:"perc_incr_1", min:0, max:6, default:4, color:primaries[0] },
+
+            { type:"text", color:GRAY_TEXT, value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
+            { type:"slider", id:"perc_incr_2", min:0, max:6, default:3, color:primaries[1] },
+
+            { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
+            { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
+            { type:"calc", id:"perc_incr_1_f", from:["perc_incr_1_c"], func:(p)=>(Math.round(p/100.0)) },
+            { type:"calc", id:"perc_incr_2_f", from:["perc_incr_2_c"], func:(p)=>(Math.round(p/100.0)) },
+         ]
+      )
+      section_i += 2
 
 
    } else {
