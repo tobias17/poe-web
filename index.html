@@ -74,11 +74,54 @@
    <script>
 const print = console.log
 
+const ICONS = {
+   none: {
+      path: "",
+      width:  1,
+      height: 1,
+   },
+   energy_shield_chestpiece: {
+      path: "./energy_shield/chestpiece.png",
+      width:  227,
+      height: 332,
+   },
+   energy_shield_helmet: {
+      path: "./energy_shield/helmet.png",
+      width:  206,
+      height: 231,
+   },
+   energy_shield_int: {
+      path: "./energy_shield/int.png",
+      width:  34,
+      height: 34,
+   },
+   energy_shield_witch: {
+      path: "./energy_shield/witch.png",
+      width:  201,
+      height: 264,
+   },
+   melee_attack_axe: {
+      path: "./melee_attack/axe.png",
+      width:  165,
+      height: 332,
+   },
+   melee_attack_amulet: {
+      path: "./melee_attack/amulet.png",
+      width:  134,
+      height: 34,
+   },
+   melee_attack_passives: {
+      path: "./melee_attack/passives.png",
+      width:  88,
+      height: 231,
+   },
+}
+
 const tab_names = [
    "energy_shield",
    "melee_attack",
 ]
-DEFAULT_TAB = 1
+DEFAULT_TAB = 0
 
 const TAB_COUNT = 2
 const tabs = []
@@ -557,12 +600,12 @@ function create_tab(tab_i) {
       return height
    }
 
-   function add_section(name, color, icon, x, y, img_width, img_height, stats_width, rows) {
+   function add_section(name, color, img_data, x, y, stats_width, rows) {
       BORDER_SIZE = 0
       // create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
       // const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
-      loadImage(x, y, icon)
-      var height = __create_stats_page(x+img_width+BORDER_SIZE, y, stats_width, rows, name, color)
+      loadImage(x, y, img_data.path)
+      var height = __create_stats_page(x+img_data.width+BORDER_SIZE, y, stats_width, rows, name, color)
       // r.setAttribute('height', height + 2*BORDER_SIZE)
    }
 
@@ -591,11 +634,9 @@ function create_tab(tab_i) {
       add_section(
          "chestpiece",
          global_colors[section_i],
-         "./energy_shield/chestpiece.png",
+         ICONS.energy_shield_chestpiece,
          60,
          150,
-         227,
-         332,
          380,
          [
             { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
@@ -627,11 +668,9 @@ function create_tab(tab_i) {
       add_section(
          "helmet",
          global_colors[section_i+1],
-         "./energy_shield/helmet.png",
+         ICONS.energy_shield_helmet,
          720,
          60,
-         206,
-         231,
          410,
          [
             { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
@@ -659,11 +698,9 @@ function create_tab(tab_i) {
       add_section(
          "int",
          global_colors[section_i],
-         "./energy_shield/int.png",
+         ICONS.energy_shield_int,
          1410,
          300,
-         34,
-         34,
          430,
          [
             { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
@@ -684,11 +721,9 @@ function create_tab(tab_i) {
       add_section(
          "hacks",
          global_colors[section_i],
-         "",
+         ICONS.none,
          1500,
          620,
-         2,
-         2,
          460,
          [
             { type:"text", color:GRAY_TEXT, value:"${perc_incr_c}% Increased Max Energy Shield" },
@@ -708,11 +743,9 @@ function create_tab(tab_i) {
       add_section(
          "character",
          global_colors[section_i],
-         "./energy_shield/witch.png",
+         ICONS.energy_shield_witch,
          550,
          650,
-         201,
-         264,
          600,
          [
             { type:"text", color:GRAY_TEXT, value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
@@ -746,11 +779,9 @@ function create_tab(tab_i) {
       add_section(
          "axe",
          global_colors[section_i],
-         "./melee_attack/axe.png",
+         ICONS.melee_attack_axe,
          70,
          280,
-         165,
-         332,
          400,
          [
             { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
@@ -782,11 +813,9 @@ function create_tab(tab_i) {
       add_section(
          "amulet",
          global_colors[section_i],
-         "./melee_attack/amulet.png",
+         ICONS.melee_attack_amulet,
          1200,
          400,
-         134,
-         34,
          480,
          [
             { type:"text", color:GRAY_TEXT, value:"Adds ${phys_damage} Physical Damage to Attacks" },
@@ -800,11 +829,9 @@ function create_tab(tab_i) {
       add_section(
          "passives",
          global_colors[section_i+1],
-         "./melee_attack/passives.png",
+         ICONS.melee_attack_passives,
          350,
          30,
-         88,
-         231,
          800,
          [
             { type:"text", color:GRAY_TEXT, value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
@@ -824,11 +851,9 @@ function create_tab(tab_i) {
       add_section(
          "character",
          global_colors[section_i],
-         "",
-         550,
+         ICONS.none,
+         750,
          650,
-         201,
-         264,
          450,
          [
             { type:"text", color:GRAY_TEXT, value:"[ (${axe.phys_damage} + ${amulet.phys_damage}) * (1.0 + ${passives_perc_incr_1_f:2} + ${passives_perc_incr_2_f:2}) ]" },
@@ -931,7 +956,6 @@ function create_tab(tab_i) {
 }
 
 select_tab(DEFAULT_TAB)
-
 
    </script>
 </body>
