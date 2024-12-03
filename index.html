@@ -141,6 +141,17 @@ function select_tab(tab_i) {
    }
 }
 
+
+
+
+
+
+
+
+
+
+
+
 const template = document.getElementById('canvas-template');
 function create_tab(tab_i) {
 
@@ -154,45 +165,55 @@ function create_tab(tab_i) {
    template.parentNode.appendChild(canvas)
    const lower_group = canvas.getElementById('lower-group');
    const upper_group = canvas.getElementById('upper-group');
+   var default_group = upper_group
 
+   const init_drag_loc = {x:0,y:0}
+   var selected_icon = null
    var selected_slider = null
    function global_on_mouse_move(e) {
-      if (selected_slider == null) {
+      if (selected_icon == null && selected_slider == null) {
          return
       }
       if (!e.buttons) {
+         selected_icon = null
          selected_slider = null
          return
       }
-      const g = selected_slider
-      const CTM = canvas.getScreenCTM();
-      const mouse_x = (e.clientX - CTM.e) / CTM.a
-      const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
-      const index = Math.floor(perc * g.range + 0.5)
-      const cx = g.lx + g.dx * (index / g.range)
-      for (knob of g.knobs) {
-         knob.setAttribute("cx", cx)
+      if (selected_icon != null) {
+         const g = selected_icon
+         const CTM = canvas.getScreenCTM();
+         g.on_move_update(-((init_drag_loc.x - e.offsetX) - CTM.e) / CTM.a, -((init_drag_loc.y - e.offsetY) - CTM.e) / CTM.a)
+         init_drag_loc.x = e.offsetX
+         init_drag_loc.y = e.offsetY
+         print(e)
+      } else if (selected_slider != null) {
+         const g = selected_slider
+         const CTM = canvas.getScreenCTM();
+         const mouse_x = (e.offsetX - CTM.e) / CTM.a
+         const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
+         const index = Math.floor(perc * g.range + 0.5)
+         const cx = g.lx + g.dx * (index / g.range)
+         for (knob of g.knobs) {
+            knob.setAttribute("cx", cx)
+         }
+         g.update_data(index + g.min)
       }
-      g.update_data(index + g.min)
    }
 
-
-   /************************/
-   /***    Common Lib    ***/
-   /************************/
-   function loadImage(x, y, href) {
-      const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-      image.setAttribute('x', x);
-      image.setAttribute('y', y);
-      image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
-      canvas.appendChild(image);
-      return image;
-   }
-   function group(x, y, attrs={}) {
+   function image(x, y, attrs={}) {
       return Object.assign(attrs, {
-         tag: 'g',
+         tag: 'image',
          x: x,
          y: y,
+      })
+   }
+   function set_href(image, href) {
+      image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href)
+      return image
+   }
+   function group(attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'g',
       })
    }
    function circle(cx, cy, r, color, attrs={}) {
@@ -225,6 +246,14 @@ function create_tab(tab_i) {
          stroke: color,
       })
    }
+   function text_line(x, y, font_size, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'text',
+         x: x,
+         y: y,
+         'font-size': font_size
+      })
+   }
    function tspan(color, attrs={}) {
       return Object.assign(attrs, {
          tag: 'tspan',
@@ -236,7 +265,7 @@ function create_tab(tab_i) {
       for (key in attrs) {
          if (key != "tag") item.setAttribute(key, attrs[key])
       }
-      (parent == null ? upper_group : parent).appendChild(item);
+      (parent == null ? default_group : parent).appendChild(item);
       return item;
    }
 
@@ -413,7 +442,7 @@ function create_tab(tab_i) {
 
       const vx = lx + (rx - lx) * ((value - min) / (max - min))
 
-      const g = create(group(0, 0))
+      const g = create(group())
       const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
       const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
       g.onmousedown = () => (selected_slider = g)
@@ -430,14 +459,7 @@ function create_tab(tab_i) {
    /*************************/
    const pointer_data = []
    function __create_text_elements(text, x, y, font_size, color, parent_name) {
-      const text_element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text_element.setAttribute('x', x);
-      text_element.setAttribute('y', y);
-      text_element.setAttribute('text-anchor', 'middle');
-      text_element.setAttribute('dominant-baseline', 'middle');
-      text_element.setAttribute('font-size', font_size);
-      text_element.setAttribute('class', 'svg_text')
-      canvas.appendChild(text_element);
+      const text_element = create(text_line(x, y, font_size, {'text-anchor':'middle', 'dominant-baseline':'middle', 'class':'svg_text'}))
 
       var original = text
       var in_section = false
@@ -554,8 +576,6 @@ function create_tab(tab_i) {
                      ? local_colors[from_keys[0]]
                      : null
             if (color == null) {
-               print(local_colors)
-               print(from_keys)
                console.error(`could not determine color for calc '${row_id}'`)
                continue
             }
@@ -602,12 +622,42 @@ function create_tab(tab_i) {
 
    function add_section(name, color, img_data, x, y, stats_width, rows) {
       BORDER_SIZE = 0
-      // create(rectangle(x-BORDER_SIZE, y-BORDER_SIZE, img_width + 2*BORDER_SIZE, img_height + 2*BORDER_SIZE, color))
-      // const r = create(rectangle(x+img_width, y-BORDER_SIZE, stats_width + 2*BORDER_SIZE, 0, color))
-      loadImage(x, y, img_data.path)
+      const g = create(group(), upper_group)
+      default_group = g
+      const im = set_href(create(image(x, y)), img_data.path)
       var height = __create_stats_page(x+img_data.width+BORDER_SIZE, y, stats_width, rows, name, color)
-      // r.setAttribute('height', height + 2*BORDER_SIZE)
+
+      const curr_transform = { x:0, y:0 }
+      function on_move_update(dx, dy) {
+         curr_transform.x += dx
+         curr_transform.y += dy
+         print(dx, dy)
+         const t = `translate(${curr_transform.x}, ${curr_transform.y})`
+         g.setAttribute('transform', t)
+         print(t)
+      }
+      g.on_move_update = on_move_update
+      im.onmousedown = (e) => (selected_icon = g, init_drag_loc.x = e.offsetX, init_drag_loc.y = e.offsetY)
    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
    const GRAY_TEXT = "#696969"
@@ -916,7 +966,6 @@ function create_tab(tab_i) {
                }
             }
          }
-         print(full)
          if (full.length == 1) {
             const d  = full[0]
             const p1 = parent_centers[d.src]
