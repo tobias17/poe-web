@@ -185,7 +185,6 @@ function create_tab(tab_i) {
          g.on_move_update(-((init_drag_loc.x - e.offsetX) - CTM.e) / CTM.a, -((init_drag_loc.y - e.offsetY) - CTM.e) / CTM.a)
          init_drag_loc.x = e.offsetX
          init_drag_loc.y = e.offsetY
-         print(e)
       } else if (selected_slider != null) {
          const g = selected_slider
          const CTM = canvas.getScreenCTM();
@@ -620,21 +619,24 @@ function create_tab(tab_i) {
       return height
    }
 
+   const section_centers = {}
    function add_section(name, color, img_data, x, y, stats_width, rows) {
       BORDER_SIZE = 0
       const g = create(group(), upper_group)
       default_group = g
       const im = set_href(create(image(x, y)), img_data.path)
-      var height = __create_stats_page(x+img_data.width+BORDER_SIZE, y, stats_width, rows, name, color)
+      var stats_height = __create_stats_page(x+img_data.width+BORDER_SIZE, y, stats_width, rows, name, color)
 
+      section_centers[name] = { x: x+img_data.width+stats_width/2, y: y+stats_height/2 }
       const curr_transform = { x:0, y:0 }
       function on_move_update(dx, dy) {
          curr_transform.x += dx
          curr_transform.y += dy
-         print(dx, dy)
+         section_centers[name].x = x + curr_transform.x + stats_width /2 + img_data.width
+         section_centers[name].y = y + curr_transform.y + stats_height/2
          const t = `translate(${curr_transform.x}, ${curr_transform.y})`
          g.setAttribute('transform', t)
-         print(t)
+         update_lines()
       }
       g.on_move_update = on_move_update
       im.onmousedown = (e) => (selected_icon = g, init_drag_loc.x = e.offsetX, init_drag_loc.y = e.offsetY)
@@ -922,6 +924,7 @@ function create_tab(tab_i) {
    }
 
 
+   const line_updates = []
    for (func of first_time) {
       func()
    }
@@ -967,27 +970,56 @@ function create_tab(tab_i) {
             }
          }
          if (full.length == 1) {
-            const d  = full[0]
-            const p1 = parent_centers[d.src]
-            const p2 = parent_centers[d.dst]
-            const c  = local_colors[d.key]
-            create(line(p1.x, p1.y, p2.x, p2.y, LINE_WIDTH, c), lower_group)
+            const d = full[0]
+            const c = local_colors[d.key]
+            const l = create(line(0, 0, 0, 0, LINE_WIDTH, c), lower_group)
+            const p1 = section_centers[d.src]
+            const p2 = section_centers[d.dst]
+            function update_pos() {
+               l.setAttribute('x1', p1.x)
+               l.setAttribute('y1', p1.y)
+               l.setAttribute('x2', p2.x)
+               l.setAttribute('y2', p2.y)
+            }
+            update_pos()
+            line_updates.push(update_pos)
          } else {
             const SEP_DIST = 24
-            const d  = full[0]
+            const ls = []
+            for (let i = 0; i < full.length; i++) {
+               const c = local_colors[full[i].key]
+               ls.push(create(line(0, 0, 0, 0, LINE_WIDTH, c), lower_group))
+            }
+            const d = full[0]
+            function update_pos() {
+               const p1 = section_centers[d.src]
+               const p2 = section_centers[d.dst]
+
+               const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
+               const vec_x = Math.cos(angle)
+               const vec_y = Math.sin(angle)
+               for (let i = 0; i < full.length; i++) {
+                  const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
+                  const dx = vec_x * scale
+                  const dy = vec_y * scale
+                  ls[i].setAttribute('x1', p1.x)
+                  ls[i].setAttribute('y1', p1.y)
+                  ls[i].setAttribute('x2', p2.x+dx)
+                  ls[i].setAttribute('y2', p2.y+dy)
+               }
+            }
+            update_pos()
+            line_updates.push(update_pos)
+
             const p1 = parent_centers[d.src]
             const p2 = parent_centers[d.dst]
-            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
-            const vec_x = Math.cos(angle)
-            const vec_y = Math.sin(angle)
-            for (let i = 0; i < full.length; i++) {
-               const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
-               const dx = vec_x * scale
-               const dy = vec_y * scale
-               const c = local_colors[full[i].key]
-               create(line(p1.x, p1.y, p2.x+dx, p2.y+dy, LINE_WIDTH, c), lower_group)
-            }
          }
+      }
+   }
+
+   function update_lines() {
+      for (update of line_updates) {
+         update()
       }
    }
 
