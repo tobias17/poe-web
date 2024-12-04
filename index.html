@@ -117,10 +117,203 @@ const ICONS = {
    },
 }
 
-const tab_names = [
-   "energy_shield",
-   "melee_attack",
+const PAGES = [
+   {
+      title: "Energy Shield",
+      data: [
+         {
+            name: "chestpiece",
+            icon: ICONS.energy_shield_chestpiece,
+            start_x: 60,
+            start_y: 150,
+            width: 380,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+
+               { type:"text", purple:true, value:"+${flat_add} to Maximum Energy Shield" },
+               { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+
+               { type:"text", purple:true, value:"${perc_incr}% Increased Energy Shield" },
+               { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+            ]
+         },
+         {
+            name: "helmet",
+            icon: ICONS.energy_shield_helmet,
+            start_x: 720,
+            start_y: 60,
+            width: 410,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+
+               { type:"text", purple:true, value:"${global_perc_incr}% Increased Global Defenses" },
+               { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:'external' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ ${base_value} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+            ]
+         },
+         {
+            name: "int",
+            icon: ICONS.energy_shield_int,
+            start_x: 1410,
+            start_y: 300,
+            width: 430,
+            rows: [
+               { type:"text", value:"Intelligence: ${amount}" },
+               { type:"slider", id:"amount", min:0, max:1000, default:491, color:'internal' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ ${amount} / 10 * 2 ]" },
+               { type:"text", value:"${perc_incr}% Increased Max Energy Shield" },
+
+               { type:"calc", id:"perc_incr", color:'external', from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+            ]
+         },
+         {
+            name: "hacks",
+            icon: ICONS.none,
+            start_x: 1500,
+            start_y: 620,
+            width: 460,
+            rows: [
+               { type:"text", value:"${perc_incr_c}% Increased Max Energy Shield" },
+               { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:'external' },
+
+               { type:"text", value:"${more_c}% More Max Energy Shield" },
+               { type:"slider", id:"more", min:0, max:1, default:0, color:'external' },
+
+               { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
+               { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.energy_shield_witch,
+            start_x: 550,
+            start_y: 650,
+            width: 600,
+            rows: [
+               { type:"text", value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
+               { type:"text", value:"Character Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
+               {
+                  type:"calc",
+                  id:"energy_shield",
+                  color:'external',
+                  from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"],
+                  func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm)
+               },
+            ]
+         }
+      ]
+   },
+
+   {
+      title: "Melee Attack",
+      data: [
+         {
+            name: "axe",
+            icon: ICONS.melee_attack_axe,
+            start_x: 70,
+            start_y: 280,
+            width: 400,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+   
+               { type:"text", value:"Base Physical Damage: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+   
+               { type:"text", purple:true, value:"Adds ${flat_add} Physical Damage" },
+               { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+   
+               { type:"text", purple:true, value:"${perc_incr}% Increased Physical Damage" },
+               { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+   
+               { type:"gap" },
+   
+               { type:"text", value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Physical Damage: ${phys_damage}" },
+   
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"phys_damage", color:'external', from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+            ]
+         },
+         {
+            name: "amulet",
+            icon: ICONS.melee_attack_amulet,
+            start_x: 1200,
+            start_y: 400,
+            width: 480,
+            rows: [
+               { type:"text", value:"Adds ${phys_damage} Physical Damage to Attacks" },
+               { type:"slider", id:"phys_damage", min:4, max:24, default:16, color:'external' },
+            ]
+         },
+         {
+            name: "passives",
+            icon: ICONS.melee_attack_passives,
+            start_x: 350,
+            start_y: 30,
+            width: 800,
+            rows: [
+               { type:"text", value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
+               { type:"slider", id:"perc_incr_1", min:0, max:6, default:2, color:'external' },
+   
+               { type:"text", value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
+               { type:"slider", id:"perc_incr_2", min:0, max:6, default:4, color:'external' },
+   
+               { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
+               { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.none,
+            start_x: 750,
+            start_y: 650,
+            width: 450,
+            rows: [
+               { type:"text", value:"[ (${axe.phys_damage} + ${amulet.phys_damage}) * (1.0 + ${passives_perc_incr_1_f:2} + ${passives_perc_incr_2_f:2}) ]" },
+               { type:"text", value:"Character Energy Shield: ${energy_shield}" },
+   
+               { type:"calc", id:"passives_perc_incr_1_f", from:["passives.perc_incr_1_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"passives_perc_incr_2_f", from:["passives.perc_incr_2_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["axe.phys_damage","amulet.phys_damage","passives_perc_incr_1_f","passives_perc_incr_2_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+            ]
+         }
+      ]
+   }
 ]
+
 DEFAULT_TAB = 0
 
 const TAB_COUNT = 2
@@ -527,15 +720,13 @@ function create_tab(tab_i) {
    /***    Stats Page    ***/
    /************************/
    const parent_centers = {}
-   const parent_colors = {}
    const local_colors = {}
-   function __create_stats_page(x, y, width, rows, parent_name, parent_color) {
+   function __create_stats_page(x, y, width, rows, parent_name, primary_colors, secondary_colors) {
       const SECTION_HEIGHT = 34
       var usable_width = width * 0.75
       const background = create(rectangle(x, y, width, 0, '#060606'))
       const cx = x + width/2
       const BUFFER = 0.3 * SECTION_HEIGHT
-      parent_colors[parent_name] = parent_color
 
       function update_data(key, value) {
          if (value === null || value === undefined) {
@@ -549,17 +740,34 @@ function create_tab(tab_i) {
             }
          }
       }
+      function pop_color(level) {
+         if (level == 'internal') {
+            const x = secondary_colors.slice(0,1)[0]
+            secondary_colors = secondary_colors.slice(1)
+            return x
+         } else {
+            const x = primary_colors.slice(0,1)[0]
+            primary_colors = primary_colors.slice(1)
+            return x
+         }
+      }
+      function pop_internal() {
+      }
 
       var curr_y = y + BUFFER + SECTION_HEIGHT
       for (row of rows) {
          const row_id = `${parent_name}.${row.id}`
          if (row.type == "text") {
-            __create_text_elements(row.value, cx, curr_y, FONT_SIZE, row.color, parent_name)
+            const GRAY_TEXT = "#696969"
+            const PURP_TEXT = "#7171da"
+            const color = ('purple' in row && row.purple) ? PURP_TEXT : GRAY_TEXT
+            __create_text_elements(row.value, cx, curr_y, FONT_SIZE, color, parent_name)
          } else if (row.type == "slider") {
-            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, row.color, row.default)
+            const color = pop_color(row.color)
+            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, color, row.default)
             g.update_data = (v) => update_data(row_id, v)
             curr_vals[row_id] = row.default
-            local_colors[row_id] = row.color
+            local_colors[row_id] = color
          } else if (row.type == "calc") {
             const from_ids = row.from
             const from_keys = []
@@ -570,7 +778,7 @@ function create_tab(tab_i) {
             const func = row.func
             const color =
                "color" in row
-                  ? row.color
+                  ? pop_color(row.color)
                   : from_keys.length == 1
                      ? local_colors[from_keys[0]]
                      : null
@@ -620,26 +828,30 @@ function create_tab(tab_i) {
    }
 
    const section_centers = {}
-   function add_section(name, color, img_data, x, y, stats_width, rows) {
-      BORDER_SIZE = 0
+   function add_section(item, primary_colors, secondary_colors) {
       const g = create(group(), upper_group)
       default_group = g
-      const im = set_href(create(image(x, y)), img_data.path)
-      var stats_height = __create_stats_page(x+img_data.width+BORDER_SIZE, y, stats_width, rows, name, color)
+      const im = set_href(create(image(item.start_x, item.start_y)), item.icon.path)
+      var stats_height = __create_stats_page(item.start_x+item.icon.width, item.start_y, item.width, item.rows, item.name, primary_colors, secondary_colors)
 
-      section_centers[name] = { x: x+img_data.width+stats_width/2, y: y+stats_height/2 }
-      const curr_transform = { x:0, y:0 }
+      const curr_transform  = { x:0, y:0 }
+      section_centers[item.name] = { x:0, y:0 }
+      function update_center() {
+         section_centers[item.name].x = item.start_x + curr_transform.x + item.width  /2 + item.icon.width
+         section_centers[item.name].y = item.start_y + curr_transform.y + stats_height/2
+      }
+      update_center()
       function on_move_update(dx, dy) {
          curr_transform.x += dx
          curr_transform.y += dy
-         section_centers[name].x = x + curr_transform.x + stats_width /2 + img_data.width
-         section_centers[name].y = y + curr_transform.y + stats_height/2
          const t = `translate(${curr_transform.x}, ${curr_transform.y})`
          g.setAttribute('transform', t)
+         update_center()
          update_lines()
       }
       g.on_move_update = on_move_update
       im.onmousedown = (e) => (selected_icon = g, init_drag_loc.x = e.offsetX, init_drag_loc.y = e.offsetY)
+
    }
 
 
@@ -655,273 +867,46 @@ function create_tab(tab_i) {
 
 
 
+   const data = PAGES[tab_i].data
 
-
-
-
-
-
-
-   const GRAY_TEXT = "#696969"
-   const PURP_TEXT = "#7171da"
-
-
-   if (tab_i == 0) {
-
-      /*************************/
-      /***   ENERGY SHIELD   ***/
-      /*************************/
-
-      var section_i = 0
-      const sections = evenly_space(7, seed_rng("1337"))
-      const global_colors = percs_to_hsvs(sections, false)
-
-      var colors = anchor_to_local_hsvs(sections[section_i], "chestpiece", 6)
-      function pop_color() {
-         const x = colors.slice(0,1)[0]
-         colors = colors.slice(1)
-         return x
+   let total_primary_count = 0
+   const primary_counts  = []
+   const secondary_counts = []
+   for (item of data) {
+      let p_count = 0
+      let s_count = 0
+      for (row of item.rows) {
+         if ('color' in row) {
+            if (row.color == 'internal') {
+               s_count += 1
+            } else if (row.color == 'external') {
+               total_primary_count += 1
+               p_count += 1
+            } else {
+               console.warn(`Got row with unsupported color key of '${row.color}'`)
+            }
+         }
       }
-      var primary = pop_color()
-      add_section(
-         "chestpiece",
-         global_colors[section_i],
-         ICONS.energy_shield_chestpiece,
-         60,
-         150,
-         380,
-         [
-            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-            { type:"text", color:PURP_TEXT, value:"+${flat_add} to Maximum Energy Shield" },
-            { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
-
-            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Energy Shield" },
-            { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
-
-            { type:"gap" },
-
-            { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
-            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
-
-            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"energy_shield", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
-         ]
-      )
-      section_i += 1
-
-      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "helmet", 4)
-      var primaries = [pop_color(), pop_color()]
-      add_section(
-         "helmet",
-         global_colors[section_i+1],
-         ICONS.energy_shield_helmet,
-         720,
-         60,
-         410,
-         [
-            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-            { type:"text", color:GRAY_TEXT, value:"Base Energy Shield: ${base_value}" },
-            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-            { type:"text", color:PURP_TEXT, value:"${global_perc_incr}% Increased Global Defenses" },
-            { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:primaries[0] },
-
-            { type:"gap" },
-
-            { type:"text", color:GRAY_TEXT, value:"[ ${base_value} * ${quality_f:2} ]" },
-            { type:"text", color:GRAY_TEXT, value:"Item Energy Shield: ${energy_shield}" },
-
-            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"energy_shield", color:primaries[1], from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
-         ]
-      )
-      section_i += 2
-
-      colors = anchor_to_local_hsvs(sections[section_i], "int", 2)
-      primary = pop_color()
-      add_section(
-         "int",
-         global_colors[section_i],
-         ICONS.energy_shield_int,
-         1410,
-         300,
-         430,
-         [
-            { type:"text", color:GRAY_TEXT, value:"Intelligence: ${amount}" },
-            { type:"slider", id:"amount", min:0, max:1000, default:491, color:pop_color() },
-
-            { type:"gap" },
-
-            { type:"text", color:GRAY_TEXT, value:"[ ${amount} / 10 * 2 ]" },
-            { type:"text", color:GRAY_TEXT, value:"${perc_incr}% Increased Max Energy Shield" },
-
-            { type:"calc", id:"perc_incr", color:primary, from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
-         ]
-      )
-      section_i += 1
-
-      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "hacks", 2)
-      primaries = [pop_color(), pop_color()]
-      add_section(
-         "hacks",
-         global_colors[section_i],
-         ICONS.none,
-         1500,
-         620,
-         460,
-         [
-            { type:"text", color:GRAY_TEXT, value:"${perc_incr_c}% Increased Max Energy Shield" },
-            { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:primaries[0] },
-
-            { type:"text", color:GRAY_TEXT, value:"${more_c}% More Max Energy Shield" },
-            { type:"slider", id:"more", min:0, max:1, default:0, color:primaries[1] },
-
-            { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
-            { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
-         ]
-      )
-      section_i += 2
-
-      colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
-      primary = pop_color()
-      add_section(
-         "character",
-         global_colors[section_i],
-         ICONS.energy_shield_witch,
-         550,
-         650,
-         600,
-         [
-            { type:"text", color:GRAY_TEXT, value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
-            { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
-
-            { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
-            { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
-            { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
-            { type:"calc", id:"energy_shield", color:primary, from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"], func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm) },
-         ]
-      )
-      section_i += 1
-   
-   } else if (tab_i == 1) {
-
-      /************************/
-      /***   MELEE ATTACK   ***/
-      /************************/
-
-      var section_i = 0
-      const sections = evenly_space(5, seed_rng("1337"))
-      const global_colors = percs_to_hsvs(sections, false)
-
-      var colors = anchor_to_local_hsvs(sections[section_i], "axe", 6)
-      function pop_color() {
-         const x = colors.slice(0,1)[0]
-         colors = colors.slice(1)
-         return x
-      }
-      var primary = pop_color()
-      add_section(
-         "axe",
-         global_colors[section_i],
-         ICONS.melee_attack_axe,
-         70,
-         280,
-         400,
-         [
-            { type:"text", color:GRAY_TEXT, value:"Quality: ${quality}%" },
-            { type:"slider", id:"quality", min:0, max:20, default:20, color:pop_color() },
-
-            { type:"text", color:GRAY_TEXT, value:"Base Physical Damage: ${base_value}" },
-            { type:"slider", id:"base_value", min:12, max:47, default:36, color:pop_color() },
-
-            { type:"text", color:PURP_TEXT, value:"Adds ${flat_add} Physical Damage" },
-            { type:"slider", id:"flat_add", min:16, max:30, default:21, color:pop_color() },
-
-            { type:"text", color:PURP_TEXT, value:"${perc_incr}% Increased Physical Damage" },
-            { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:pop_color() },
-
-            { type:"gap" },
-
-            { type:"text", color:GRAY_TEXT, value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
-            { type:"text", color:GRAY_TEXT, value:"Item Physical Damage: ${phys_damage}" },
-
-            { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
-            { type:"calc", id:"phys_damage", color:primary, from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
-         ]
-      )
-      section_i += 1
-
-      colors = anchor_to_local_hsvs(sections[section_i], "amulet", 1)
-      primary = pop_color()
-      add_section(
-         "amulet",
-         global_colors[section_i],
-         ICONS.melee_attack_amulet,
-         1200,
-         400,
-         480,
-         [
-            { type:"text", color:GRAY_TEXT, value:"Adds ${phys_damage} Physical Damage to Attacks" },
-            { type:"slider", id:"phys_damage", min:4, max:24, default:16, color:primary },
-         ]
-      )
-      section_i += 1
-
-      colors = multi_anchor_to_local_hsvs([sections[section_i], sections[section_i+1]], "passives", 2)
-      var primaries = [pop_color(), pop_color()]
-      add_section(
-         "passives",
-         global_colors[section_i+1],
-         ICONS.melee_attack_passives,
-         350,
-         30,
-         800,
-         [
-            { type:"text", color:GRAY_TEXT, value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
-            { type:"slider", id:"perc_incr_1", min:0, max:6, default:2, color:primaries[0] },
-
-            { type:"text", color:GRAY_TEXT, value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
-            { type:"slider", id:"perc_incr_2", min:0, max:6, default:4, color:primaries[1] },
-
-            { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
-            { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
-         ]
-      )
-      section_i += 2
-
-      colors = anchor_to_local_hsvs(sections[section_i], "character", 1)
-      primary = pop_color()
-      add_section(
-         "character",
-         global_colors[section_i],
-         ICONS.none,
-         750,
-         650,
-         450,
-         [
-            { type:"text", color:GRAY_TEXT, value:"[ (${axe.phys_damage} + ${amulet.phys_damage}) * (1.0 + ${passives_perc_incr_1_f:2} + ${passives_perc_incr_2_f:2}) ]" },
-            { type:"text", color:GRAY_TEXT, value:"Character Energy Shield: ${energy_shield}" },
-
-            { type:"calc", id:"passives_perc_incr_1_f", from:["passives.perc_incr_1_c"], func:(p)=>(p/100.0) },
-            { type:"calc", id:"passives_perc_incr_2_f", from:["passives.perc_incr_2_c"], func:(p)=>(p/100.0) },
-            { type:"calc", id:"energy_shield", color:primary, from:["axe.phys_damage","amulet.phys_damage","passives_perc_incr_1_f","passives_perc_incr_2_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
-         ]
-      )
-      section_i += 1
-
-
-   } else {
-      throw Error(`Do not have support for creating tab_i of '${tab_i}'`)
+      primary_counts.push(p_count)
+      secondary_counts.push(s_count)
    }
+
+   const sections = evenly_space(7, seed_rng("1337"))
+   var global_colors = percs_to_hsvs(sections)
+   function pop_external() {
+      const x = global_colors.slice(0,1)[0]
+      global_colors = global_colors.slice(1)
+      return x
+   }
+   for (let i = 0; i < data.length; i++) {
+      const primary_colors = []
+      for (let j = 0; j < primary_counts[i]; j++) {
+         primary_colors.push(pop_external())
+      }
+      const secondary_colors = anchor_to_local_hsvs(sections[i], "chestpiece", 6)
+      add_section(data[i], primary_colors, secondary_colors)
+   }
+
 
 
    const line_updates = []
