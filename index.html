@@ -53,6 +53,7 @@
    <div>
       <button onclick="select_tab(0)">Energy Shield</button>
       <button onclick="select_tab(1)">Melee Attack</button>
+      <button onclick="select_tab(2)">Increased vs More</button>
    </div>
    <div id="svg-container">
       <svg id="canvas-template" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000" class="hidden">
@@ -311,21 +312,109 @@ const PAGES = [
             ]
          }
       ]
+   },
+
+   {
+      title: "Increased vs More",
+      data: [
+         {
+            name: "axe",
+            icon: ICONS.melee_attack_axe,
+            start_x: 70,
+            start_y: 600,
+            width: 240,
+            rows: [
+               { type:"text", value:"Damage: ${damage}" },
+               { type:"calc", id:"damage", color:'external', from:[], func:()=>(50) },
+            ]
+         },
+         {
+            name: "mega",
+            icon: ICONS.energy_shield_int,
+            start_x: 70,
+            start_y: 400,
+            width: 400,
+            rows: [
+               { type:"text", value:"${perc_incr}% Increased Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'external' },
+               { type:"calc", id:"perc_incr", from:["slider"], func:(v)=>Math.round(v*1000) },
+            ]
+         },
+         {
+            name: "incr",
+            icon: ICONS.melee_attack_axe,
+            start_x: 300,
+            start_y: 100,
+            width: 500,
+            rows: [
+               { type:"text", value:"${incr_1_c}% Increased Damage with Axes" },
+               { type:"text", value:"${incr_2_c}% Increased Damage with Melee Weapons" },
+               { type:"text", value:"${incr_3_c}% Increased Physical Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
+   
+               { type:"calc", id:"incr_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"incr_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"incr_3_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+            ]
+         },
+         {
+            name: "more",
+            icon: ICONS.melee_attack_axe,
+            start_x: 1100,
+            start_y: 100,
+            width: 500,
+            rows: [
+               { type:"text", value:"${more_1_c}% More Damage with Axes" },
+               { type:"text", value:"${more_2_c}% More Damage with Melee Weapons" },
+               { type:"text", value:"${more_3_c}% More Physical Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
+   
+               { type:"calc", id:"more_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"more_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"more_3_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.melee_attack_axe,
+            start_x: 650,
+            start_y: 600,
+            width: 680,
+            rows: [
+               { type:"text", value:"[ ${axe.damage} * (1.0 + ${mega_f:2} + ${incr_1_f:2} + ${incr_2_f:2} + ${incr_3_f:2}) * ${more_1_p:2} * ${more_2_p:2} * ${more_3_p:2} ]" },
+               { type:"text", value:"Attack Damage: ${total_damage}" },
+   
+               { type:"calc", id:"mega_f",  from:["mega.perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_1_f", from:["incr.incr_1_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_2_f", from:["incr.incr_2_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_3_f", from:["incr.incr_3_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"more_1_p", from:["more.more_1_c"], func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_2_p", from:["more.more_2_c"], func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_3_p", from:["more.more_3_c"], func:(p)=>(1+p/100.0) },
+               {
+                  type:"calc",
+                  id:"total_damage",
+                  color:'external',
+                  from:["axe.damage","mega_f","incr_1_f","incr_2_f","incr_3_f","more_1_p","more_2_p","more_3_p"],
+                  func:(a,mf,i1,i2,i3,m1,m2,m3) => Math.floor(a * (1.0+mf+i1+i2+i3) *m1*m2*m3),
+               }
+            ]
+         }
+      ]
    }
 ]
 
-DEFAULT_TAB = 0
+DEFAULT_TAB = 2
 
-const TAB_COUNT = 2
 const tabs = []
-for (let i = 0; i < TAB_COUNT; i++) {
+for (let i = 0; i < PAGES.length; i++) {
    tabs.push(null)
 }
 function select_tab(tab_i) {
    if (tabs[tab_i] == null) {
       create_tab(tab_i)
    }
-   for (let i = 0; i < TAB_COUNT; i++) {
+   for (let i = 0; i < PAGES.length; i++) {
       if (i == tab_i) {
          tabs[i].on_show()
       } else if (tabs[i] != null) {
@@ -534,6 +623,10 @@ function create_tab(tab_i) {
       return percs_to_hsvs(fill_single_anchor(anchor, amount, seed_rng(name)))
    }
    function multi_anchor_to_local_hsvs(anchors, name, amount) {
+      if (anchors.length == 1) {
+         return anchor_to_local_hsvs(anchors[0], name, amount)
+      }
+
       var indeces = []
       for (a of anchors) {
          indeces.push(Math.floor(a * amount))
@@ -751,12 +844,11 @@ function create_tab(tab_i) {
             return x
          }
       }
-      function pop_internal() {
-      }
 
       var curr_y = y + BUFFER + SECTION_HEIGHT
       for (row of rows) {
          const row_id = `${parent_name}.${row.id}`
+         // print(`adding ${row_id}`)
          if (row.type == "text") {
             const GRAY_TEXT = "#696969"
             const PURP_TEXT = "#7171da"
@@ -777,7 +869,7 @@ function create_tab(tab_i) {
 
             const func = row.func
             const color =
-               "color" in row
+               "color" in row && row.color != undefined
                   ? pop_color(row.color)
                   : from_keys.length == 1
                      ? local_colors[from_keys[0]]
@@ -812,6 +904,7 @@ function create_tab(tab_i) {
                   })
                }
             }
+            update_calc()
             curr_y -= SECTION_HEIGHT
          } else if (row.type == "gap") {
             // pass
@@ -851,7 +944,6 @@ function create_tab(tab_i) {
       }
       g.on_move_update = on_move_update
       im.onmousedown = (e) => (selected_icon = g, init_drag_loc.x = e.offsetX, init_drag_loc.y = e.offsetY)
-
    }
 
 
@@ -869,12 +961,12 @@ function create_tab(tab_i) {
 
    const data = PAGES[tab_i].data
 
-   let total_primary_count = 0
+   var total_primary_count = 0
    const primary_counts  = []
    const secondary_counts = []
    for (item of data) {
-      let p_count = 0
-      let s_count = 0
+      var p_count = 0
+      var s_count = 0
       for (row of item.rows) {
          if ('color' in row) {
             if (row.color == 'internal') {
@@ -891,20 +983,25 @@ function create_tab(tab_i) {
       secondary_counts.push(s_count)
    }
 
-   const sections = evenly_space(7, seed_rng("1337"))
-   var global_colors = percs_to_hsvs(sections)
-   function pop_external() {
-      const x = global_colors.slice(0,1)[0]
-      global_colors = global_colors.slice(1)
-      return x
-   }
+   const sections = evenly_space(total_primary_count, seed_rng("1337"))
+   var color_index = 0
    for (let i = 0; i < data.length; i++) {
-      const primary_colors = []
+      const sec = []
       for (let j = 0; j < primary_counts[i]; j++) {
-         primary_colors.push(pop_external())
+         sec.push(sections[color_index])
+         color_index += 1
       }
-      const secondary_colors = anchor_to_local_hsvs(sections[i], "chestpiece", 6)
-      add_section(data[i], primary_colors, secondary_colors)
+      const colors = multi_anchor_to_local_hsvs(sec, data[i].name, primary_counts[i] + secondary_counts[i])
+      const primary = []
+      const secondary = []
+      for (let j = 0; j < colors.length; j++) {
+         if (j < primary_counts[i]) {
+            primary.push(colors[j])
+         } else {
+            secondary.push(colors[j])
+         }
+      }
+      add_section(data[i], primary, secondary)
    }
 
 
