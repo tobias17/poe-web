@@ -29,14 +29,18 @@
          left: 0;
       }
       button {
-         margin-top: 8px;
-         margin-left: 4px;
-         margin-right: 4px;
-         margin-bottom: 8px;
-         padding: 4px;
+         margin: 8px 4px;
+         padding: 8px 16px;
+         background-color: #202020;
          border: none;
-         border-radius: 4px;
+         border-radius: 8px;
          cursor: pointer;
+         font-size: 14px;
+         font-weight: 500;
+         transition: background-color 0.3s ease;
+      }
+      button:hover {
+         background-color: #2b2b2b;
       }
       .svg_text {
          -webkit-user-select: none;
@@ -50,10 +54,7 @@
    </style>
 </head>
 <body>
-   <div>
-      <button onclick="select_tab(0)">Energy Shield</button>
-      <button onclick="select_tab(1)">Melee Attack</button>
-      <button onclick="select_tab(2)">Increased vs More</button>
+   <div id="button-container">
    </div>
    <div id="svg-container">
       <svg id="canvas-template" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000" class="hidden">
@@ -74,6 +75,17 @@
 
    <script>
 const print = console.log
+
+CONSTS = {
+   MENU_BUTTON_SELECTED_COLOR    : "#a0a0a0",
+   MENE_BUTTON_NOT_SELECTED_COLOR: "#606060",
+
+   SLIDER_COLOR: "#181818",
+   KNOB_COLOR  : "#404040",
+
+   GRAY_TEXT_COLOR  : "#696969",
+   PURPLE_TEXT_COLOR: "#7171da",
+}
 
 const ICONS = {
    none: {
@@ -407,7 +419,15 @@ const PAGES = [
 DEFAULT_TAB = 2
 
 const tabs = []
+const buttons = []
+const button_div = document.getElementById("button-container")
 for (let i = 0; i < PAGES.length; i++) {
+   const button = document.createElement("button")
+   button.setAttribute("onclick", `select_tab(${i})`)
+   button.textContent = PAGES[i].title
+   button.style.color = CONSTS.MENE_BUTTON_NOT_SELECTED_COLOR
+   button_div.appendChild(button)
+   buttons.push(button)
    tabs.push(null)
 }
 function select_tab(tab_i) {
@@ -715,20 +735,18 @@ function create_tab(tab_i) {
    /*************************/
    function __create_slider(cx, cy, width, min, max, color, value) {
       const SLIDER_RADIUS = 4
-      const SLIDER_COLOR  = "#181818"
       const KNOB_RADIUS   = 15
-      const KNOB_COLOR    = "#404040"
 
       const lx = cx-width/2
       const rx = cx+width/2
-      create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, SLIDER_COLOR))
-      create(circle(lx, cy, SLIDER_RADIUS, SLIDER_COLOR))
-      create(circle(rx, cy, SLIDER_RADIUS, SLIDER_COLOR))
+      create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
+      create(circle(lx, cy, SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
+      create(circle(rx, cy, SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
 
       const vx = lx + (rx - lx) * ((value - min) / (max - min))
 
       const g = create(group())
-      const knob_outer = create(circle(vx, cy, KNOB_RADIUS, KNOB_COLOR), g)
+      const knob_outer = create(circle(vx, cy, KNOB_RADIUS, CONSTS.KNOB_COLOR), g)
       const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
       g.onmousedown = () => (selected_slider = g)
       g.min = min
@@ -850,9 +868,7 @@ function create_tab(tab_i) {
          const row_id = `${parent_name}.${row.id}`
          // print(`adding ${row_id}`)
          if (row.type == "text") {
-            const GRAY_TEXT = "#696969"
-            const PURP_TEXT = "#7171da"
-            const color = ('purple' in row && row.purple) ? PURP_TEXT : GRAY_TEXT
+            const color = ('purple' in row && row.purple) ? CONSTS.PURPLE_TEXT_COLOR : CONSTS.GRAY_TEXT_COLOR
             __create_text_elements(row.value, cx, curr_y, FONT_SIZE, color, parent_name)
          } else if (row.type == "slider") {
             const color = pop_color(row.color)
@@ -1110,10 +1126,12 @@ function create_tab(tab_i) {
       on_show: function() {
          canvas.setAttribute('class', '')
          canvas.addEventListener('mousemove', global_on_mouse_move);
+         buttons[tab_i].style.color = CONSTS.MENU_BUTTON_SELECTED_COLOR
       },
       on_hide: function() {
          canvas.setAttribute('class', 'hidden')
          canvas.removeEventListener('mousemove', global_on_mouse_move);
+         buttons[tab_i].style.color = CONSTS.MENE_BUTTON_NOT_SELECTED_COLOR
       },
    }
 }
