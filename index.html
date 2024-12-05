@@ -491,7 +491,7 @@ function create_tab(tab_i) {
          const g = selected_slider
          const CTM = canvas.getScreenCTM();
          const mouse_x = (e.offsetX - CTM.e) / CTM.a
-         const perc = Math.max(0.0, Math.min(1.0, (mouse_x- g.lx) / g.dx))
+         const perc = Math.max(0.0, Math.min(1.0, (mouse_x-g.transformed_lx()) / g.dx))
          const index = Math.floor(perc * g.range + 0.5)
          const cx = g.lx + g.dx * (index / g.range)
          for (knob of g.knobs) {
@@ -733,7 +733,7 @@ function create_tab(tab_i) {
    /*************************/
    /***  Slider Elements  ***/
    /*************************/
-   function __create_slider(cx, cy, width, min, max, color, value) {
+   function __create_slider(cx, cy, width, min, max, color, value, curr_transform) {
       const SLIDER_RADIUS = 4
       const KNOB_RADIUS   = 15
 
@@ -751,6 +751,7 @@ function create_tab(tab_i) {
       g.onmousedown = () => (selected_slider = g)
       g.min = min
       g.range = (max-min)
+      g.transformed_lx = () => (lx + curr_transform.x)
       g.lx = lx
       g.dx = (rx-lx)
       g.knobs = [knob_outer, knob_inner]
@@ -830,9 +831,8 @@ function create_tab(tab_i) {
    /************************/
    /***    Stats Page    ***/
    /************************/
-   const parent_centers = {}
    const local_colors = {}
-   function __create_stats_page(x, y, width, rows, parent_name, primary_colors, secondary_colors) {
+   function __create_stats_page(x, y, width, rows, parent_name, primary_colors, secondary_colors, curr_transform) {
       const SECTION_HEIGHT = 34
       var usable_width = width * 0.75
       const background = create(rectangle(x, y, width, 0, '#060606'))
@@ -872,7 +872,7 @@ function create_tab(tab_i) {
             __create_text_elements(row.value, cx, curr_y, FONT_SIZE, color, parent_name)
          } else if (row.type == "slider") {
             const color = pop_color(row.color)
-            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, color, row.default)
+            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, color, row.default, curr_transform)
             g.update_data = (v) => update_data(row_id, v)
             curr_vals[row_id] = row.default
             local_colors[row_id] = color
@@ -932,7 +932,6 @@ function create_tab(tab_i) {
 
       const height = (curr_y + BUFFER) - y
       background.setAttribute('height', height)
-      parent_centers[parent_name] = { x:cx, y:y+height/2 }
       return height
    }
 
@@ -941,9 +940,10 @@ function create_tab(tab_i) {
       const g = create(group(), upper_group)
       default_group = g
       const im = set_href(create(image(item.start_x, item.start_y)), item.icon.path)
-      var stats_height = __create_stats_page(item.start_x+item.icon.width, item.start_y, item.width, item.rows, item.name, primary_colors, secondary_colors)
 
-      const curr_transform  = { x:0, y:0 }
+      const curr_transform = { x:0, y:0 }
+      var stats_height = __create_stats_page(item.start_x+item.icon.width, item.start_y, item.width, item.rows, item.name, primary_colors, secondary_colors, curr_transform)
+
       section_centers[item.name] = { x:0, y:0 }
       function update_center() {
          section_centers[item.name].x = item.start_x + curr_transform.x + item.width  /2 + item.icon.width
@@ -1108,9 +1108,6 @@ function create_tab(tab_i) {
             }
             update_pos()
             line_updates.push(update_pos)
-
-            const p1 = parent_centers[d.src]
-            const p2 = parent_centers[d.dst]
          }
       }
    }
