@@ -287,8 +287,8 @@ const PAGES = [
          {
             name: "amulet",
             icon: ICONS.melee_attack_amulet,
-            start_x: 1200,
-            start_y: 400,
+            start_x: 400,
+            start_y: 100,
             width: 480,
             rows: [
                { type:"text", value:"Adds ${phys_damage} Physical Damage to Attacks" },
@@ -298,8 +298,8 @@ const PAGES = [
          {
             name: "passives",
             icon: ICONS.melee_attack_passives,
-            start_x: 350,
-            start_y: 30,
+            start_x: 1020,
+            start_y: 250,
             width: 800,
             rows: [
                { type:"text", value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
@@ -346,8 +346,8 @@ const PAGES = [
          },
          {
             name: "mega",
-            icon: ICONS.energy_shield_int,
-            start_x: 70,
+            icon: ICONS.none,
+            start_x: 150,
             start_y: 400,
             width: 400,
             rows: [
@@ -358,8 +358,8 @@ const PAGES = [
          },
          {
             name: "incr",
-            icon: ICONS.melee_attack_axe,
-            start_x: 300,
+            icon: ICONS.none,
+            start_x: 400,
             start_y: 100,
             width: 500,
             rows: [
@@ -375,8 +375,8 @@ const PAGES = [
          },
          {
             name: "more",
-            icon: ICONS.melee_attack_axe,
-            start_x: 1100,
+            icon: ICONS.none,
+            start_x: 1200,
             start_y: 100,
             width: 500,
             rows: [
@@ -392,10 +392,10 @@ const PAGES = [
          },
          {
             name: "character",
-            icon: ICONS.melee_attack_axe,
-            start_x: 650,
+            icon: ICONS.none,
+            start_x: 700,
             start_y: 600,
-            width: 680,
+            width: 700,
             rows: [
                { type:"text", value:"[ ${axe.damage} * (1.0 + ${mega_f:2} + ${incr_1_f:2} + ${incr_2_f:2} + ${incr_3_f:2}) * ${more_1_p:2} * ${more_2_p:2} * ${more_3_p:2} ]" },
                { type:"text", value:"Attack Damage: ${total_damage}" },
@@ -420,7 +420,7 @@ const PAGES = [
    }
 ]
 
-DEFAULT_TAB = 2
+DEFAULT_TAB = 0
 
 const tabs = []
 const buttons = []
