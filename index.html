@@ -1,17 +1,1144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Redirecting...</title>
-    <script>
-        window.location.href = 'defense_calc/defense_calc.html';
-    </script>
-    <noscript>
-        <meta http-equiv="refresh" content="0;url=defense_calc/defense_calc.html">
-        <p>If you are not redirected, <a href="defense_calc/defense_calc.html">click here</a>.</p>
-    </noscript>
+   <meta charset="UTF-8">
+   <title>SVG Canvas Helper</title>
+   <style>
+      body {
+         background-color: #101010;
+         margin: 0;
+         padding: 0;
+         display: flex;
+         justify-content: center;
+         font-family: Arial, sans-serif;
+      }
+      #svg-container {
+         width: 100%;
+         max-width: 100%;
+         position: fixed;
+         top: 40;
+         left: 0;
+         right: 0;
+         margin: 0 auto;
+      }
+      svg {
+         width: 100%;
+         height: auto;
+         position: absolute;
+         top: 50px;
+         left: 0;
+      }
+      button {
+         margin: 8px 4px;
+         padding: 8px 16px;
+         background-color: #202020;
+         border: none;
+         border-radius: 8px;
+         cursor: pointer;
+         font-size: 14px;
+         font-weight: 500;
+         transition: background-color 0.3s ease;
+         -webkit-user-select: none;
+         -moz-user-select: none;
+         -ms-user-select: none;
+         user-select: none;
+      }
+      button:hover {
+         background-color: #2b2b2b;
+      }
+      .svg_text {
+         -webkit-user-select: none;
+         -moz-user-select: none;
+         -ms-user-select: none;
+         user-select: none;
+      }
+      .hidden {
+         visibility: hidden;
+      }
+   </style>
 </head>
 <body>
-    <p>Redirecting... Please wait.</p>
+   <div id="button-container">
+   </div>
+   <div id="svg-container">
+      <svg id="canvas-template" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000" class="hidden">
+         <defs>
+           <filter id="glow">
+            <feGaussianBlur class="blur" stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+               <feMergeNode in="SourceGraphic"/>
+               <feMergeNode in="coloredBlur"/>
+            </feMerge>
+         </filter>
+         </defs>
+         <g id="lower-group"></g>
+         <g id="upper-group"></g>
+         <!-- Elements will be dynamically added here -->
+      </svg>
+   </div>
+
+   <script>
+const print = console.log
+
+CONSTS = {
+   MENU_BUTTON_SELECTED_COLOR    : "#a0a0a0",
+   MENE_BUTTON_NOT_SELECTED_COLOR: "#606060",
+
+   SLIDER_COLOR: "#181818",
+   KNOB_COLOR  : "#404040",
+
+   GRAY_TEXT_COLOR  : "#696969",
+   PURPLE_TEXT_COLOR: "#7171da",
+}
+
+const ICONS = {
+   none: {
+      path: "",
+      width:  1,
+      height: 1,
+   },
+   energy_shield_chestpiece: {
+      path: "./energy_shield/chestpiece.png",
+      width:  227,
+      height: 332,
+   },
+   energy_shield_helmet: {
+      path: "./energy_shield/helmet.png",
+      width:  206,
+      height: 231,
+   },
+   energy_shield_int: {
+      path: "./energy_shield/int.png",
+      width:  34,
+      height: 34,
+   },
+   energy_shield_witch: {
+      path: "./energy_shield/witch.png",
+      width:  201,
+      height: 264,
+   },
+   melee_attack_axe: {
+      path: "./melee_attack/axe.png",
+      width:  165,
+      height: 332,
+   },
+   melee_attack_amulet: {
+      path: "./melee_attack/amulet.png",
+      width:  134,
+      height: 34,
+   },
+   melee_attack_passives: {
+      path: "./melee_attack/passives.png",
+      width:  88,
+      height: 231,
+   },
+}
+
+const PAGES = [
+   {
+      title: "Energy Shield",
+      data: [
+         {
+            name: "chestpiece",
+            icon: ICONS.energy_shield_chestpiece,
+            start_x: 60,
+            start_y: 150,
+            width: 380,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+
+               { type:"text", purple:true, value:"+${flat_add} to Maximum Energy Shield" },
+               { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+
+               { type:"text", purple:true, value:"${perc_incr}% Increased Energy Shield" },
+               { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+            ]
+         },
+         {
+            name: "helmet",
+            icon: ICONS.energy_shield_helmet,
+            start_x: 720,
+            start_y: 60,
+            width: 410,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+
+               { type:"text", purple:true, value:"${global_perc_incr}% Increased Global Defenses" },
+               { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:'external' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ ${base_value} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["base_value","quality_f"], func:(b,q)=>Math.floor(b*q) },
+            ]
+         },
+         {
+            name: "int",
+            icon: ICONS.energy_shield_int,
+            start_x: 1410,
+            start_y: 300,
+            width: 430,
+            rows: [
+               { type:"text", value:"Intelligence: ${amount}" },
+               { type:"slider", id:"amount", min:0, max:1000, default:491, color:'internal' },
+
+               { type:"gap" },
+
+               { type:"text", value:"[ ${amount} / 10 * 2 ]" },
+               { type:"text", value:"${perc_incr}% Increased Max Energy Shield" },
+
+               { type:"calc", id:"perc_incr", color:'external', from:["amount"], func:(a)=>Math.floor(a / 10.0 * 2) },
+            ]
+         },
+         {
+            name: "hacks",
+            icon: ICONS.none,
+            start_x: 1500,
+            start_y: 620,
+            width: 460,
+            rows: [
+               { type:"text", value:"${perc_incr_c}% Increased Max Energy Shield" },
+               { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:'external' },
+
+               { type:"text", value:"${more_c}% More Max Energy Shield" },
+               { type:"slider", id:"more", min:0, max:1, default:0, color:'external' },
+
+               { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
+               { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.energy_shield_witch,
+            start_x: 550,
+            start_y: 650,
+            width: 600,
+            rows: [
+               { type:"text", value:"[ (${chestpiece.energy_shield} + ${helmet.energy_shield}) * (1.0 + ${helmet_perc_incr_f:2} + ${int_perc_incr_f:2} + ${hacks.perc_incr:2}) * ${hacks_more_f:2} ]" },
+               { type:"text", value:"Character Energy Shield: ${energy_shield}" },
+
+               { type:"calc", id:"int_perc_incr_f", from:["int.perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"helmet_perc_incr_f", from:["helmet.global_perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"hacks_more_f", from:["hacks.more"], func:(p)=>(p+1.0) },
+               {
+                  type:"calc",
+                  id:"energy_shield",
+                  color:'external',
+                  from:["chestpiece.energy_shield","helmet.energy_shield","int_perc_incr_f","helmet_perc_incr_f","hacks.perc_incr","hacks_more_f"],
+                  func:(cf,hf,ip,hp,xp,xm)=>Math.floor((cf+hf)*(1.0+ip+hp+xp)*xm)
+               },
+            ]
+         }
+      ]
+   },
+
+   {
+      title: "Melee Attack",
+      data: [
+         {
+            name: "axe",
+            icon: ICONS.melee_attack_axe,
+            start_x: 70,
+            start_y: 280,
+            width: 400,
+            rows: [
+               { type:"text", value:"Quality: ${quality}%" },
+               { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+   
+               { type:"text", value:"Base Physical Damage: ${base_value}" },
+               { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+   
+               { type:"text", purple:true, value:"Adds ${flat_add} Physical Damage" },
+               { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+   
+               { type:"text", purple:true, value:"${perc_incr}% Increased Physical Damage" },
+               { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+   
+               { type:"gap" },
+   
+               { type:"text", value:"[ (${base_value} + ${flat_add}) * ${perc_incr_f:2} * ${quality_f:2} ]" },
+               { type:"text", value:"Item Physical Damage: ${phys_damage}" },
+   
+               { type:"calc", id:"quality_f", from:["quality"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"perc_incr_f", from:["perc_incr"], func:(p)=>(1.0 + p/100.0) },
+               { type:"calc", id:"phys_damage", color:'external', from:["base_value","flat_add","perc_incr_f","quality_f"], func:(b,f,p,q)=>Math.floor((b+f)*p*q) }
+            ]
+         },
+         {
+            name: "amulet",
+            icon: ICONS.melee_attack_amulet,
+            start_x: 400,
+            start_y: 100,
+            width: 480,
+            rows: [
+               { type:"text", value:"Adds ${phys_damage} Physical Damage to Attacks" },
+               { type:"slider", id:"phys_damage", min:4, max:24, default:16, color:'external' },
+            ]
+         },
+         {
+            name: "passives",
+            icon: ICONS.melee_attack_passives,
+            start_x: 1020,
+            start_y: 250,
+            width: 800,
+            rows: [
+               { type:"text", value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
+               { type:"slider", id:"perc_incr_1", min:0, max:6, default:2, color:'external' },
+   
+               { type:"text", value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
+               { type:"slider", id:"perc_incr_2", min:0, max:6, default:4, color:'external' },
+   
+               { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
+               { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.none,
+            start_x: 750,
+            start_y: 650,
+            width: 450,
+            rows: [
+               { type:"text", value:"[ (${axe.phys_damage} + ${amulet.phys_damage}) * (1.0 + ${passives_perc_incr_1_f:2} + ${passives_perc_incr_2_f:2}) ]" },
+               { type:"text", value:"Character Energy Shield: ${energy_shield}" },
+   
+               { type:"calc", id:"passives_perc_incr_1_f", from:["passives.perc_incr_1_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"passives_perc_incr_2_f", from:["passives.perc_incr_2_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"energy_shield", color:'external', from:["axe.phys_damage","amulet.phys_damage","passives_perc_incr_1_f","passives_perc_incr_2_f"], func:(cf,hf,ip,hp)=>Math.floor((cf+hf)*(1.0+ip+hp)) },
+            ]
+         }
+      ]
+   },
+
+   {
+      title: "Increased vs More",
+      data: [
+         {
+            name: "axe",
+            icon: ICONS.melee_attack_axe,
+            start_x: 70,
+            start_y: 600,
+            width: 240,
+            rows: [
+               { type:"text", value:"Damage: ${damage}" },
+               { type:"calc", id:"damage", color:'external', from:[], func:()=>(50) },
+            ]
+         },
+         {
+            name: "mega",
+            icon: ICONS.none,
+            start_x: 150,
+            start_y: 400,
+            width: 400,
+            rows: [
+               { type:"text", value:"${perc_incr}% Increased Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'external' },
+               { type:"calc", id:"perc_incr", from:["slider"], func:(v)=>Math.round(v*1000) },
+            ]
+         },
+         {
+            name: "incr",
+            icon: ICONS.none,
+            start_x: 400,
+            start_y: 100,
+            width: 500,
+            rows: [
+               { type:"text", value:"${incr_1_c}% Increased Damage with Axes" },
+               { type:"text", value:"${incr_2_c}% Increased Damage with Melee Weapons" },
+               { type:"text", value:"${incr_3_c}% Increased Physical Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
+   
+               { type:"calc", id:"incr_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"incr_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"incr_3_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+            ]
+         },
+         {
+            name: "more",
+            icon: ICONS.none,
+            start_x: 1200,
+            start_y: 100,
+            width: 500,
+            rows: [
+               { type:"text", value:"${more_1_c}% More Damage with Axes" },
+               { type:"text", value:"${more_2_c}% More Damage with Melee Weapons" },
+               { type:"text", value:"${more_3_c}% More Physical Damage" },
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
+   
+               { type:"calc", id:"more_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"more_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+               { type:"calc", id:"more_3_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
+            ]
+         },
+         {
+            name: "character",
+            icon: ICONS.none,
+            start_x: 700,
+            start_y: 600,
+            width: 700,
+            rows: [
+               { type:"text", value:"[ ${axe.damage} * (1.0 + ${mega_f:2} + ${incr_1_f:2} + ${incr_2_f:2} + ${incr_3_f:2}) * ${more_1_p:2} * ${more_2_p:2} * ${more_3_p:2} ]" },
+               { type:"text", value:"Attack Damage: ${total_damage}" },
+   
+               { type:"calc", id:"mega_f",  from:["mega.perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_1_f", from:["incr.incr_1_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_2_f", from:["incr.incr_2_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_3_f", from:["incr.incr_3_c"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"more_1_p", from:["more.more_1_c"], func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_2_p", from:["more.more_2_c"], func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_3_p", from:["more.more_3_c"], func:(p)=>(1+p/100.0) },
+               {
+                  type:"calc",
+                  id:"total_damage",
+                  color:'external',
+                  from:["axe.damage","mega_f","incr_1_f","incr_2_f","incr_3_f","more_1_p","more_2_p","more_3_p"],
+                  func:(a,mf,i1,i2,i3,m1,m2,m3) => Math.floor(a * (1.0+mf+i1+i2+i3) *m1*m2*m3),
+               }
+            ]
+         }
+      ]
+   }
+]
+
+DEFAULT_TAB = 0
+
+const tabs = []
+const buttons = []
+const button_div = document.getElementById("button-container")
+for (let i = 0; i < PAGES.length; i++) {
+   const button = document.createElement("button")
+   button.setAttribute("onclick", `select_tab(${i})`)
+   button.textContent = PAGES[i].title
+   button.style.color = CONSTS.MENE_BUTTON_NOT_SELECTED_COLOR
+   button_div.appendChild(button)
+   buttons.push(button)
+   tabs.push(null)
+}
+function select_tab(tab_i) {
+   if (tabs[tab_i] == null) {
+      create_tab(tab_i)
+   }
+   for (let i = 0; i < PAGES.length; i++) {
+      if (i == tab_i) {
+         tabs[i].on_show()
+      } else if (tabs[i] != null) {
+         tabs[i].on_hide()
+      }
+   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+const template = document.getElementById('canvas-template');
+function create_tab(tab_i) {
+
+   if (tabs[tab_i] != null) {
+      throw Error(`Tried to create_tab on an existing index ${tab_i}`)
+   }
+
+   // Get the SVG canvas
+   const canvas = template.cloneNode(true);
+   canvas.setAttribute('class', '')
+   template.parentNode.appendChild(canvas)
+   const lower_group = canvas.getElementById('lower-group');
+   const upper_group = canvas.getElementById('upper-group');
+   var default_group = upper_group
+
+   const init_drag_loc = {x:0,y:0}
+   var selected_icon = null
+   var selected_slider = null
+   function global_on_mouse_move(e) {
+      if (selected_icon == null && selected_slider == null) {
+         return
+      }
+      if (!e.buttons) {
+         selected_icon = null
+         selected_slider = null
+         return
+      }
+      if (selected_icon != null) {
+         const g = selected_icon
+         const CTM = canvas.getScreenCTM();
+         g.on_move_update(-((init_drag_loc.x - e.offsetX) - CTM.e) / CTM.a, -((init_drag_loc.y - e.offsetY) - CTM.e) / CTM.a)
+         init_drag_loc.x = e.offsetX
+         init_drag_loc.y = e.offsetY
+      } else if (selected_slider != null) {
+         const g = selected_slider
+         const CTM = canvas.getScreenCTM();
+         const mouse_x = (e.offsetX - CTM.e) / CTM.a
+         const perc = Math.max(0.0, Math.min(1.0, (mouse_x-g.transformed_lx()) / g.dx))
+         const index = Math.floor(perc * g.range + 0.5)
+         const cx = g.lx + g.dx * (index / g.range)
+         for (knob of g.knobs) {
+            knob.setAttribute("cx", cx)
+         }
+         g.update_data(index + g.min)
+      }
+   }
+
+   function image(x, y, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'image',
+         x: x,
+         y: y,
+      })
+   }
+   function set_href(image, href) {
+      image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href)
+      return image
+   }
+   function group(attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'g',
+      })
+   }
+   function circle(cx, cy, r, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'circle',
+         cx: cx,
+         cy: cy,
+         r: r,
+         fill: color,
+      })
+   }
+   function rectangle(x, y, w, h, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'rect',
+         x: x,
+         y: y,
+         width: w,
+         height: h,
+         fill: color,
+      })
+   }
+   function line(x1, y1, x2, y2, r, color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'line',
+         x1: x1,
+         y1: y1,
+         x2: x2,
+         y2: y2,
+         'stroke-width': r,
+         stroke: color,
+      })
+   }
+   function text_line(x, y, font_size, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'text',
+         x: x,
+         y: y,
+         'font-size': font_size
+      })
+   }
+   function tspan(color, attrs={}) {
+      return Object.assign(attrs, {
+         tag: 'tspan',
+         fill: color,
+      })
+   }
+   function create(attrs, parent=null) {
+      const item = document.createElementNS('http://www.w3.org/2000/svg', attrs.tag);
+      for (key in attrs) {
+         if (key != "tag") item.setAttribute(key, attrs[key])
+      }
+      (parent == null ? default_group : parent).appendChild(item);
+      return item;
+   }
+
+   const FONT_SIZE = 24
+   function sfc32(a, b, c, d) {
+      return function() {
+         a |= 0; b |= 0; c |= 0; d |= 0;
+         let t = (a + b | 0) + d | 0;
+         d = d + 1 | 0;
+         a = b ^ b >>> 9;
+         b = c + (c << 3) | 0;
+         c = (c << 21 | c >>> 11);
+         c = c + t | 0;
+         return (t >>> 0) / 4294967296;
+      }
+   }
+   function seed_rng(text) {
+      const h = []
+      for (let shft = 3; shft < 7; shft++) {
+         var hash = 0
+         if (text.length == 0) return sfc32(0, 1, 2, 3)
+         for (i = 0; i < text.length; i++) {
+            hash = ((hash << shft) - hash) + text.charCodeAt(i) | 0
+         }
+         h.push(hash)
+      }
+      return sfc32(...h)
+   }
+   function shuffle(list, rng) {
+      const values = list.slice()
+      const order = []
+      while (values.length > 0) {
+         order.push(values.splice(Math.floor(rng() * values.length), 1)[0])
+      }
+      return order
+   }
+   function evenly_space(amount, rng, offset=null) {
+      offset = offset == null ? rng() : offset
+      const values = []
+      for (let i = 0; i < amount; i++) {
+         const v = offset + (i/amount)
+         values.push(v > 1.0 ? v - 1.0 : v)
+      }
+      return shuffle(values, rng)
+   }
+
+   const HUE_START = -80
+   const HUE_END   = 220
+   function rotate(value, amount) {
+      const sum = value + amount
+      return sum - Math.floor(sum)
+   }
+   function norm_index(value, range, start=0) {
+      return start + Math.round(rotate((value - start) / range))
+   }
+   function fill_single_anchor(anchor, amount, rng) {
+      const percs = evenly_space(amount, rng, anchor)
+      const delta = anchor - percs[0]
+      for (i in percs) {
+         percs[i] = rotate(percs[i], delta)
+      }
+      return percs
+   }
+   function percs_to_hsvs(percs, local=true) {
+      const values = []
+      for (perc of percs) {
+         var hue = HUE_START + perc * (HUE_END - HUE_START)
+         if (hue < 0) hue += 360
+         values.push(`hsl(${Math.round(hue)}deg, 92%, ${local ? 75 : 8}%)`)
+      }
+      return values
+   }
+   function anchor_to_local_hsvs(anchor, name, amount) {
+      return percs_to_hsvs(fill_single_anchor(anchor, amount, seed_rng(name)))
+   }
+   function multi_anchor_to_local_hsvs(anchors, name, amount) {
+      if (anchors.length == 1) {
+         return anchor_to_local_hsvs(anchors[0], name, amount)
+      }
+
+      var indeces = []
+      for (a of anchors) {
+         indeces.push(Math.floor(a * amount))
+      }
+      const HALF_STEP = 0.5 * (1 / amount)
+      function spread_out() {
+         for (oi in indeces) {
+            for (ii in indeces) {
+               if (oi == ii) continue
+               const ov = indeces[oi]
+               const iv = indeces[ii]
+               if (ov == iv) {
+                  const center = ov * amount + HALF_STEP
+                  const od = Math.abs(anchors[oi] - center)
+                  const id = Math.abs(anchors[ii] - center)
+
+                  const has_left  = norm_index(ov - 1, amount) in indeces
+                  const has_right = norm_index(ov + 1, amount) in indeces
+                  var dir = 0
+                  if ( has_left && !has_right) dir =  1
+                  if (!has_left &&  has_right) dir = -1
+                  if (od > id) {
+                     if (dir == 0) dir = Math.sign(anchors[oi] - anchors[ii])
+                     indeces[oi] = norm_index(indeces[oi] + dir, amount)
+                  } else {
+                     if (dir == 0) dir = Math.sign(anchors[ii] - anchors[oi])
+                     indeces[ii] = norm_index(indeces[ii] + dir, amount)
+                  }
+                  return false
+               }
+            }
+         }
+         return true
+      }
+      var ok
+      while (!ok) {
+         ok = spread_out()
+      }
+
+      const spaces = []
+      for (let i = 0; i < amount; i++) {
+         var found = false
+         for (let j = 0; j < indeces.length; j++) {
+            if (i == indeces[j]) {
+               found = true
+               break
+            }
+         }
+         if (!found) {
+            spaces.push(i)
+         }
+      }
+      const percs = []
+      for (a of anchors) {
+         percs.push(a)
+      }
+      const order = shuffle(spaces, seed_rng(name))
+      for (o of order) {
+         percs.push(o / amount + HALF_STEP)
+      }
+
+      const values = []
+      for (perc of percs) {
+         var hue = HUE_START + perc * (HUE_END - HUE_START)
+         if (hue < 0) hue += 360
+         values.push(`hsl(${Math.round(hue)}deg, 92%, 75%)`)
+      }
+      return values
+   }
+   function parse_parent(global_name) {
+      return global_name.split(".")[0]
+   }
+
+   var first_time = []
+   var curr_vals = {}
+   var stat_subs = {}
+   function add_sub(key, value) {
+      if ( !(key in stat_subs) ) {
+         stat_subs[key] = []
+      }
+      stat_subs[key].push(value)
+   }
+
+   /*************************/
+   /***  Slider Elements  ***/
+   /*************************/
+   function __create_slider(cx, cy, width, min, max, color, value, curr_transform) {
+      const SLIDER_RADIUS = 4
+      const KNOB_RADIUS   = 15
+
+      const lx = cx-width/2
+      const rx = cx+width/2
+      create(rectangle(lx, cy-SLIDER_RADIUS, width, 2*SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
+      create(circle(lx, cy, SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
+      create(circle(rx, cy, SLIDER_RADIUS, CONSTS.SLIDER_COLOR))
+
+      const vx = lx + (rx - lx) * ((value - min) / (max - min))
+
+      const g = create(group())
+      const knob_outer = create(circle(vx, cy, KNOB_RADIUS, CONSTS.KNOB_COLOR), g)
+      const knob_inner = create(circle(vx, cy, SLIDER_RADIUS, color, {filter:"url(#glow)"}), g)
+      g.onmousedown = () => (selected_slider = g)
+      g.min = min
+      g.range = (max-min)
+      g.transformed_lx = () => (lx + curr_transform.x)
+      g.lx = lx
+      g.dx = (rx-lx)
+      g.knobs = [knob_outer, knob_inner]
+      return g
+   }
+
+   /*************************/
+   /***   Text Elements   ***/
+   /*************************/
+   const pointer_data = []
+   function __create_text_elements(text, x, y, font_size, color, parent_name) {
+      const text_element = create(text_line(x, y, font_size, {'text-anchor':'middle', 'dominant-baseline':'middle', 'class':'svg_text'}))
+
+      var original = text
+      var in_section = false
+      while (text.length > 0) {
+         if (in_section) {
+            var index = text.indexOf("}")
+            if (index < 0) {
+               console.error(`unmatched brackets: '${original}'`)
+               return null
+            }
+            var id = text.slice(0, index)
+            const fmt_index = id.indexOf(":")
+            var fmt_func = (v) => (v)
+            if (fmt_index > 0) {
+               const fmt_str = id.slice(fmt_index+1)
+               if (fmt_str.length != 1) {
+                  console.error(`Expect exactly 1 format character, got '${fmt_str}' from '${id}'`)
+                  return null
+               }
+               const amnt = parseInt(fmt_str, 10)
+               fmt_func = (v) => (v.toFixed(amnt))
+               id = id.slice(0, fmt_index)
+            }
+
+            if (id.indexOf(".") < 0) {
+               id = `${parent_name}.${id}`
+            } else {
+               const other_name = parse_parent(id)
+               if (other_name != parent_name) {
+                  pointer_data.push({
+                     src: parent_name,
+                     dst: other_name,
+                     key: id,
+                  })
+               }
+            }
+            const key = id
+            const t = create(tspan(color), text_element)
+            t.textContent = `[${key}]`
+            const frozen_fmt_func = fmt_func
+            function update_text() {
+               const value = curr_vals[key]
+               if (value === null || value === undefined) {
+                  return
+               }
+               t.textContent = frozen_fmt_func(value)
+            }
+            add_sub(key, update_text)
+            first_time.push(() => t.setAttribute('fill', local_colors[key]))
+            first_time.push(update_text)
+
+            text = text.slice(index + 1)
+            in_section = false
+         } else {
+            var index = text.indexOf("${")
+            var chunk = index < 0 ? text : text.slice(0, index)
+            const t = create(tspan(color), text_element)
+            t.textContent = chunk
+            text = index < 0 ? "" : text.slice(index + 2)
+            in_section = true
+         }
+      }
+   }
+
+   /************************/
+   /***    Stats Page    ***/
+   /************************/
+   const local_colors = {}
+   function __create_stats_page(x, y, width, rows, parent_name, primary_colors, secondary_colors, curr_transform) {
+      const SECTION_HEIGHT = 34
+      var usable_width = width * 0.75
+      const background = create(rectangle(x, y, width, 0, '#060606'))
+      const cx = x + width/2
+      const BUFFER = 0.3 * SECTION_HEIGHT
+
+      function update_data(key, value) {
+         if (value === null || value === undefined) {
+            console.error(`Got null value for key '${key}'`)
+            return
+         }
+         curr_vals[key] = value
+         if (key in stat_subs) {
+            for (sub of stat_subs[key]) {
+               sub()
+            }
+         }
+      }
+      function pop_color(level) {
+         if (level == 'internal') {
+            const x = secondary_colors.slice(0,1)[0]
+            secondary_colors = secondary_colors.slice(1)
+            return x
+         } else {
+            const x = primary_colors.slice(0,1)[0]
+            primary_colors = primary_colors.slice(1)
+            return x
+         }
+      }
+
+      var curr_y = y + BUFFER + SECTION_HEIGHT
+      for (row of rows) {
+         const row_id = `${parent_name}.${row.id}`
+         // print(`adding ${row_id}`)
+         if (row.type == "text") {
+            const color = ('purple' in row && row.purple) ? CONSTS.PURPLE_TEXT_COLOR : CONSTS.GRAY_TEXT_COLOR
+            __create_text_elements(row.value, cx, curr_y, FONT_SIZE, color, parent_name)
+         } else if (row.type == "slider") {
+            const color = pop_color(row.color)
+            const g = __create_slider(cx, curr_y, usable_width, row.min, row.max, color, row.default, curr_transform)
+            g.update_data = (v) => update_data(row_id, v)
+            curr_vals[row_id] = row.default
+            local_colors[row_id] = color
+         } else if (row.type == "calc") {
+            const from_ids = row.from
+            const from_keys = []
+            for (id of from_ids) {
+               from_keys.push(id.indexOf(".") < 0 ? `${parent_name}.${id}` : id)
+            }
+
+            const func = row.func
+            const color =
+               "color" in row && row.color != undefined
+                  ? pop_color(row.color)
+                  : from_keys.length == 1
+                     ? local_colors[from_keys[0]]
+                     : null
+            if (color == null) {
+               console.error(`could not determine color for calc '${row_id}'`)
+               continue
+            }
+            local_colors[row_id] = color
+
+            function update_calc() {
+               const params = []
+               for (key of from_keys) {
+                  params.push(curr_vals[key])
+               }
+               const new_value = func(...params)
+               if (new_value == null) {
+                  console.error(`got null result from ${row_id}, params=${params}`)
+               } else {
+                  update_data(row_id, new_value)
+               }
+            }
+            for (key of from_keys) {
+               add_sub(key, update_calc)
+               const other_name = parse_parent(key)
+               if (other_name != parent_name) {
+                  pointer_data.push({
+                     src: parent_name,
+                     dst: other_name,
+                     key: id,
+                     from: key,
+                  })
+               }
+            }
+            update_calc()
+            curr_y -= SECTION_HEIGHT
+         } else if (row.type == "gap") {
+            // pass
+         } else {
+            console.error(`got invalid row['type'] value '${row.type}'`)
+         }
+         curr_y += SECTION_HEIGHT
+      }
+
+      const height = (curr_y + BUFFER) - y
+      background.setAttribute('height', height)
+      return height
+   }
+
+   const section_centers = {}
+   function add_section(item, primary_colors, secondary_colors) {
+      const g = create(group(), upper_group)
+      default_group = g
+      const im = set_href(create(image(item.start_x, item.start_y)), item.icon.path)
+
+      const curr_transform = { x:0, y:0 }
+      var stats_height = __create_stats_page(item.start_x+item.icon.width, item.start_y, item.width, item.rows, item.name, primary_colors, secondary_colors, curr_transform)
+
+      section_centers[item.name] = { x:0, y:0 }
+      function update_center() {
+         section_centers[item.name].x = item.start_x + curr_transform.x + item.width  /2 + item.icon.width
+         section_centers[item.name].y = item.start_y + curr_transform.y + stats_height/2
+      }
+      update_center()
+      function on_move_update(dx, dy) {
+         curr_transform.x += dx
+         curr_transform.y += dy
+         const t = `translate(${curr_transform.x}, ${curr_transform.y})`
+         g.setAttribute('transform', t)
+         update_center()
+         update_lines()
+      }
+      g.on_move_update = on_move_update
+      im.onmousedown = (e) => (selected_icon = g, init_drag_loc.x = e.offsetX, init_drag_loc.y = e.offsetY)
+   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   const data = PAGES[tab_i].data
+
+   var total_primary_count = 0
+   const primary_counts  = []
+   const secondary_counts = []
+   for (item of data) {
+      var p_count = 0
+      var s_count = 0
+      for (row of item.rows) {
+         if ('color' in row) {
+            if (row.color == 'internal') {
+               s_count += 1
+            } else if (row.color == 'external') {
+               total_primary_count += 1
+               p_count += 1
+            } else {
+               console.warn(`Got row with unsupported color key of '${row.color}'`)
+            }
+         }
+      }
+      primary_counts.push(p_count)
+      secondary_counts.push(s_count)
+   }
+
+   const sections = evenly_space(total_primary_count, seed_rng("1337"))
+   var color_index = 0
+   for (let i = 0; i < data.length; i++) {
+      const sec = []
+      for (let j = 0; j < primary_counts[i]; j++) {
+         sec.push(sections[color_index])
+         color_index += 1
+      }
+      const colors = multi_anchor_to_local_hsvs(sec, data[i].name, primary_counts[i] + secondary_counts[i])
+      const primary = []
+      const secondary = []
+      for (let j = 0; j < colors.length; j++) {
+         if (j < primary_counts[i]) {
+            primary.push(colors[j])
+         } else {
+            secondary.push(colors[j])
+         }
+      }
+      add_section(data[i], primary, secondary)
+   }
+
+
+
+   const line_updates = []
+   for (func of first_time) {
+      func()
+   }
+   for (key in stat_subs) {
+      for (sub of stat_subs[key]) {
+         sub()
+      }
+   }
+   for (i1 in pointer_data) {
+      const LINE_WIDTH = 2
+      const data1 = pointer_data[i1]
+      const like = [data1]
+      var use = true
+      for (i2 in pointer_data) {
+         if (i1 == i2) {
+            continue
+         }
+
+         const data2 = pointer_data[i2]
+         if (data1.src == data2.src && data1.dst == data2.dst) {
+            if (i2 < i1) {
+               use = false
+               break
+            } else {
+               like.push(data2)
+            }
+         }
+      }
+      if (use) {
+         const full = []
+         for (let i = 0; i < like.length; i++) {
+            if (like[i].key in local_colors) {
+               var add = true
+               for (e of full) {
+                  if (like[i].key == e.key) {
+                     add =- false
+                     break
+                  }
+               }
+               if (add) {
+                  full.push(like[i])
+               }
+            }
+         }
+         if (full.length == 1) {
+            const d = full[0]
+            const c = local_colors[d.key]
+            const l = create(line(0, 0, 0, 0, LINE_WIDTH, c), lower_group)
+            const p1 = section_centers[d.src]
+            const p2 = section_centers[d.dst]
+            function update_pos() {
+               l.setAttribute('x1', p1.x)
+               l.setAttribute('y1', p1.y)
+               l.setAttribute('x2', p2.x)
+               l.setAttribute('y2', p2.y)
+            }
+            update_pos()
+            line_updates.push(update_pos)
+         } else {
+            const SEP_DIST = 24
+            const ls = []
+            for (let i = 0; i < full.length; i++) {
+               const c = local_colors[full[i].key]
+               ls.push(create(line(0, 0, 0, 0, LINE_WIDTH, c), lower_group))
+            }
+            const d = full[0]
+            function update_pos() {
+               const p1 = section_centers[d.src]
+               const p2 = section_centers[d.dst]
+
+               const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2
+               const vec_x = Math.cos(angle)
+               const vec_y = Math.sin(angle)
+               for (let i = 0; i < full.length; i++) {
+                  const scale = ((i / (full.length - 1)) * 2 - 1) * (full.length / 2) * SEP_DIST
+                  const dx = vec_x * scale
+                  const dy = vec_y * scale
+                  ls[i].setAttribute('x1', p1.x)
+                  ls[i].setAttribute('y1', p1.y)
+                  ls[i].setAttribute('x2', p2.x+dx)
+                  ls[i].setAttribute('y2', p2.y+dy)
+               }
+            }
+            update_pos()
+            line_updates.push(update_pos)
+         }
+      }
+   }
+
+   function update_lines() {
+      for (update of line_updates) {
+         update()
+      }
+   }
+
+   tabs[tab_i] = {
+      canvas: canvas,
+      on_show: function() {
+         canvas.setAttribute('class', '')
+         canvas.addEventListener('mousemove', global_on_mouse_move);
+         buttons[tab_i].style.color = CONSTS.MENU_BUTTON_SELECTED_COLOR
+      },
+      on_hide: function() {
+         canvas.setAttribute('class', 'hidden')
+         canvas.removeEventListener('mousemove', global_on_mouse_move);
+         buttons[tab_i].style.color = CONSTS.MENE_BUTTON_NOT_SELECTED_COLOR
+      },
+   }
+}
+
+select_tab(DEFAULT_TAB)
+
+   </script>
 </body>
 </html>
