@@ -345,7 +345,7 @@ const PAGES = [
             ]
          },
          {
-            name: "mega",
+            name: "megai",
             icon: ICONS.none,
             start_x: 150,
             start_y: 400,
@@ -391,28 +391,41 @@ const PAGES = [
             ]
          },
          {
+            name: "megam",
+            icon: ICONS.none,
+            start_x: 1500,
+            start_y: 400,
+            width: 400,
+            rows: [
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'external' },
+               { type:"text", value:"${more}% More Damage" },
+               { type:"calc", id:"more", from:["slider"], func:(v)=>Math.round(v*1000) },
+            ]
+         },
+         {
             name: "character",
             icon: ICONS.none,
-            start_x: 700,
+            start_x: 680,
             start_y: 600,
-            width: 700,
+            width: 760,
             rows: [
-               { type:"text", value:"[ ${axe.damage} * (1.0 + ${mega_f:2} + ${incr_1_f:2} + ${incr_2_f:2} + ${incr_3_f:2}) * ${more_1_p:2} * ${more_2_p:2} * ${more_3_p:2} ]" },
+               { type:"text", value:"[ ${axe.damage} * (1.0 + ${megai_f:2} + ${incr_1_f:2} + ${incr_2_f:2} + ${incr_3_f:2}) * ${more_1_p:2} * ${more_2_p:2} * ${more_3_p:2} * ${megam_p:2} ]" },
                { type:"text", value:"Attack Damage: ${total_damage}" },
    
-               { type:"calc", id:"mega_f",  from:["mega.perc_incr"], func:(p)=>(p/100.0) },
-               { type:"calc", id:"incr_1_f", from:["incr.incr_1_c"], func:(p)=>(p/100.0) },
-               { type:"calc", id:"incr_2_f", from:["incr.incr_2_c"], func:(p)=>(p/100.0) },
-               { type:"calc", id:"incr_3_f", from:["incr.incr_3_c"], func:(p)=>(p/100.0) },
-               { type:"calc", id:"more_1_p", from:["more.more_1_c"], func:(p)=>(1+p/100.0) },
-               { type:"calc", id:"more_2_p", from:["more.more_2_c"], func:(p)=>(1+p/100.0) },
-               { type:"calc", id:"more_3_p", from:["more.more_3_c"], func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"megai_f",  from:["megai.perc_incr"], func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_1_f", from:["incr.incr_1_c"],   func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_2_f", from:["incr.incr_2_c"],   func:(p)=>(p/100.0) },
+               { type:"calc", id:"incr_3_f", from:["incr.incr_3_c"],   func:(p)=>(p/100.0) },
+               { type:"calc", id:"megam_p",  from:["megam.more"],      func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_1_p", from:["more.more_1_c"],   func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_2_p", from:["more.more_2_c"],   func:(p)=>(1+p/100.0) },
+               { type:"calc", id:"more_3_p", from:["more.more_3_c"],   func:(p)=>(1+p/100.0) },
                {
                   type:"calc",
                   id:"total_damage",
                   color:'external',
-                  from:["axe.damage","mega_f","incr_1_f","incr_2_f","incr_3_f","more_1_p","more_2_p","more_3_p"],
-                  func:(a,mf,i1,i2,i3,m1,m2,m3) => Math.floor(a * (1.0+mf+i1+i2+i3) *m1*m2*m3),
+                  from:["axe.damage","megai_f","incr_1_f","incr_2_f","incr_3_f","more_1_p","more_2_p","more_3_p","megam_p"],
+                  func:(a,mf,i1,i2,i3,m1,m2,m3,mm) => Math.floor(a * (1.0+mf+i1+i2+i3) *m1*m2*m3*mm),
                }
             ]
          }
