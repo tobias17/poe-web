@@ -145,17 +145,17 @@ const PAGES = [
             start_y: 150,
             width: 380,
             rows: [
-               { type:"text", value:"Quality: ${quality}%" },
                { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+               { type:"text", value:"Quality: ${quality}%" },
 
-               { type:"text", value:"Base Energy Shield: ${base_value}" },
                { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
 
-               { type:"text", purple:true, value:"+${flat_add} to Maximum Energy Shield" },
                { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+               { type:"text", purple:true, value:"+${flat_add} to Maximum Energy Shield" },
 
-               { type:"text", purple:true, value:"${perc_incr}% Increased Energy Shield" },
                { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+               { type:"text", purple:true, value:"${perc_incr}% Increased Energy Shield" },
 
                { type:"gap" },
 
@@ -174,14 +174,14 @@ const PAGES = [
             start_y: 60,
             width: 410,
             rows: [
-               { type:"text", value:"Quality: ${quality}%" },
                { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+               { type:"text", value:"Quality: ${quality}%" },
 
-               { type:"text", value:"Base Energy Shield: ${base_value}" },
                { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+               { type:"text", value:"Base Energy Shield: ${base_value}" },
 
-               { type:"text", purple:true, value:"${global_perc_incr}% Increased Global Defenses" },
                { type:"slider", id:"global_perc_incr", min:0, max:22, default:18, color:'external' },
+               { type:"text", purple:true, value:"${global_perc_incr}% Increased Global Defenses" },
 
                { type:"gap" },
 
@@ -199,8 +199,8 @@ const PAGES = [
             start_y: 300,
             width: 430,
             rows: [
-               { type:"text", value:"Intelligence: ${amount}" },
                { type:"slider", id:"amount", min:0, max:1000, default:491, color:'internal' },
+               { type:"text", value:"Intelligence: ${amount}" },
 
                { type:"gap" },
 
@@ -217,11 +217,11 @@ const PAGES = [
             start_y: 620,
             width: 460,
             rows: [
-               { type:"text", value:"${perc_incr_c}% Increased Max Energy Shield" },
                { type:"slider", id:"perc_incr", min:0, max:1, default:0, color:'external' },
+               { type:"text", value:"${perc_incr_c}% Increased Max Energy Shield" },
 
-               { type:"text", value:"${more_c}% More Max Energy Shield" },
                { type:"slider", id:"more", min:0, max:1, default:0, color:'external' },
+               { type:"text", value:"${more_c}% More Max Energy Shield" },
 
                { type:"calc", id:"perc_incr_c", from:["perc_incr"], func:(p)=>Math.round(p*100) },
                { type:"calc", id:"more_c", from:["more"], func:(p)=>Math.round(p*100) },
@@ -262,17 +262,17 @@ const PAGES = [
             start_y: 280,
             width: 400,
             rows: [
-               { type:"text", value:"Quality: ${quality}%" },
                { type:"slider", id:"quality", min:0, max:20, default:20, color:'internal' },
+               { type:"text", value:"Quality: ${quality}%" },
    
-               { type:"text", value:"Base Physical Damage: ${base_value}" },
                { type:"slider", id:"base_value", min:12, max:47, default:36, color:'internal' },
+               { type:"text", value:"Base Physical Damage: ${base_value}" },
    
-               { type:"text", purple:true, value:"Adds ${flat_add} Physical Damage" },
                { type:"slider", id:"flat_add", min:16, max:30, default:21, color:'internal' },
+               { type:"text", purple:true, value:"Adds ${flat_add} Physical Damage" },
    
-               { type:"text", purple:true, value:"${perc_incr}% Increased Physical Damage" },
                { type:"slider", id:"perc_incr", min:20, max:109, default:54, color:'internal' },
+               { type:"text", purple:true, value:"${perc_incr}% Increased Physical Damage" },
    
                { type:"gap" },
    
@@ -291,8 +291,8 @@ const PAGES = [
             start_y: 100,
             width: 480,
             rows: [
-               { type:"text", value:"Adds ${phys_damage} Physical Damage to Attacks" },
                { type:"slider", id:"phys_damage", min:4, max:24, default:16, color:'external' },
+               { type:"text", value:"Adds ${phys_damage} Physical Damage to Attacks" },
             ]
          },
          {
@@ -302,11 +302,11 @@ const PAGES = [
             start_y: 250,
             width: 800,
             rows: [
-               { type:"text", value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
                { type:"slider", id:"perc_incr_1", min:0, max:6, default:2, color:'external' },
+               { type:"text", value:"${perc_incr_1_c}% Increased Physical Damage with Axes" },
    
-               { type:"text", value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
                { type:"slider", id:"perc_incr_2", min:0, max:6, default:4, color:'external' },
+               { type:"text", value:"${perc_incr_2_c}% Increased Physical Damage with Two Handed Melee Weapons" },
    
                { type:"calc", id:"perc_incr_1_c", from:["perc_incr_1"], func:(p)=>(Math.round(p*18)) },
                { type:"calc", id:"perc_incr_2_c", from:["perc_incr_2"], func:(p)=>(Math.round(p*12)) },
@@ -340,8 +340,8 @@ const PAGES = [
             start_y: 600,
             width: 240,
             rows: [
-               { type:"text", value:"Damage: ${damage}" },
                { type:"calc", id:"damage", color:'external', from:[], func:()=>(50) },
+               { type:"text", value:"Damage: ${damage}" },
             ]
          },
          {
@@ -351,8 +351,8 @@ const PAGES = [
             start_y: 400,
             width: 400,
             rows: [
-               { type:"text", value:"${perc_incr}% Increased Damage" },
                { type:"slider", id:"slider", min:0, max:1, default:0, color:'external' },
+               { type:"text", value:"${perc_incr}% Increased Damage" },
                { type:"calc", id:"perc_incr", from:["slider"], func:(v)=>Math.round(v*1000) },
             ]
          },
@@ -363,10 +363,10 @@ const PAGES = [
             start_y: 100,
             width: 500,
             rows: [
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
                { type:"text", value:"${incr_1_c}% Increased Damage with Axes" },
                { type:"text", value:"${incr_2_c}% Increased Damage with Melee Weapons" },
                { type:"text", value:"${incr_3_c}% Increased Physical Damage" },
-               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
    
                { type:"calc", id:"incr_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
                { type:"calc", id:"incr_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
@@ -380,10 +380,10 @@ const PAGES = [
             start_y: 100,
             width: 500,
             rows: [
+               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
                { type:"text", value:"${more_1_c}% More Damage with Axes" },
                { type:"text", value:"${more_2_c}% More Damage with Melee Weapons" },
                { type:"text", value:"${more_3_c}% More Physical Damage" },
-               { type:"slider", id:"slider", min:0, max:1, default:0, color:'internal' },
    
                { type:"calc", id:"more_1_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
                { type:"calc", id:"more_2_c", color:'external', from:["slider"], func:(p)=>(Math.round(p*25)) },
